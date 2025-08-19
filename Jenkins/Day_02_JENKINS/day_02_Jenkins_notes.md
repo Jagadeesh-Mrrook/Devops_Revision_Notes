@@ -490,4 +490,277 @@ post {
 
 ---
 
+# Parallel Stages Execution (Declarative) — with failFast
 
+1. Concept:
+   - Run multiple, independent stages at the same time using the `parallel` directive in Declarative Pipelines.
+   - Goal: reduce total pipeline time by executing work concurrently.
+   - `failFast` behavior: stop other parallel branches early when one fails (to save time/resources).
+
+2. Purpose / Use Case in Real-World:
+   - Speed up CI: run unit tests, integration tests, lint, and security scans in parallel.
+   - Matrix-like checks: run on multiple OS/JDK/Node versions in parallel.
+   - Build/test multiple services or modules concurrently.
+   - Fail fast when one failure makes remaining work irrelevant (e.g., compile or unit tests failing).
+
+3. How it Works / Steps / Syntax:
+   - Basic Declarative parallel (each inner stage runs concurrently):
+
+       pipeline {
+         agent any
+         stages {
+           stage('Quality Gates') {
+             parallel {
+               stage('Unit Tests') {
+                 steps { sh 'make test-unit' }
+               }
+               stage('Lint') {
+                 steps { sh 'npm run lint' }
+               }
+               stage('Security Scan') {
+                 steps { sh 'make scan' }
+               }
+             }
+           }
+         }
+       }
+
+   - Fail-fast patterns commonly used in real projects:
+
+     a) Pipeline-wide fail-fast for all parallels (Declarative):
+
+       pipeline {
+         agent any
+         options { parallelsAlwaysFailFast() }   // abort sibling branches when one fails
+         stages {
+           stage('Checks') {
+             parallel {
+               stage('UT') { steps { sh 'make test' } }
+               stage('Lint') { steps { sh 'make lint' } }
+             }
+           }
+         }
+       }
+
+     b) Hybrid (scripted-style map) to enable `failFast: true` inside a Declarative stage:
+
+       pipeline {
+         agent any
+         stages {
+           stage('Parallel (failFast)') {
+             steps {
+               script {
+                 parallel(
+                   'Unit':        { sh 'make test-unit' },
+                   'Integration': { sh 'make test-integration' },
+                   'Lint':        { sh 'npm run lint' },
+                   failFast: true
+                 )
+               }
+             }
+           }
+         }
+       }
+
+     c) Matrix with fail-fast (Declarative):
+
+       pipeline {
+         agent any
+         stages {
+           stage('Matrix Tests') {
+             matrix {
+               axes {
+                 axis { name 'OS';  values 'linux', 'windows' }
+                 axis { name 'JDK'; values '11', '17' }
+               }
+               options { failFast true }  // stop siblings on failure
+               stages {
+                 stage('Run') {
+                   steps { echo "Testing on ${OS} JDK ${JDK}" }
+                 }
+               }
+             }
+           }
+         }
+       }
+
+   - Key notes:
+     - Use `parallelsAlwaysFailFast()` when you want a blanket fail-fast across all parallel branches.
+     - Use the `script { parallel(..., failFast: true) }` map style when you need per-stage fail-fast in a Declarative pipeline.
+     - `matrix { options { failFast true } }` is supported for matrix executions.
+
+4. Common Issues / Errors:
+   - Not enough executors/agents → branches queue or starve (slow or stuck builds).
+   - `failFast` placed incorrectly (e.g., inside `steps` for Declarative `parallel { }`) → has no effect.
+   - Shared workspace collisions (parallel branches writing to same files/dirs) → flaky or corrupted outputs.
+   - Label mismatch (e.g., stage requires `windows` agent but node unavailable) → branch stuck or fails to schedule.
+   - Mixed logs from parallel branches → hard to read failures.
+   - Cross-branch dependencies (stage B needs output from stage A) → parallelization causes failures/races.
+
+5. Troubleshooting / Fixes:
+   - Capacity: ensure sufficient executors/agents; right-size the number of parallel branches.
+   - Fail-fast placement:
+     • Use `options { parallelsAlwaysFailFast() }` pipeline-wide, or
+     • Use `script { parallel(..., failFast: true) }` for a single parallel block,
+     • Use `matrix { options { failFast true } }` for matrix builds.
+   - Isolation: use separate dirs (`dir('path')`) or share via `stash/unstash` instead of writing to the same workspace.
+   - Labeling: set correct `agent { label 'linux' }`, `agent { label 'windows' }` per branch if needed.
+   - Logging: enable `timestamps()`, prefix logs with branch names (`echo "[UT] ..."`) for clarity.
+   - Validate syntax with Pipeline Syntax/Replay; upgrade Pipeline plugins if known parallel/fail-fast bugs affect behavior.
+
+6. Best Practices / Tips:
+   - Only parallelize truly independent work; avoid shared mutable state.
+   - Prefer `parallelsAlwaysFailFast()` for fast feedback pipelines where partial results aren’t needed.
+   - If you need a full report (e.g., all OS/versions), avoid fail-fast so every branch completes.
+   - Use descriptive stage names for better visibility in the UI.
+   - Build once, then `stash` artifacts and `unstash` in parallel branches to avoid rebuilding.
+   - Add reasonable `timeout` to each branch to prevent hung tasks from blocking the pipeline.
+
+
+---
+
+# Jenkins Declarative Pipeline — Agent Directive (Part 1)
+
+## What is `agent`?
+- `agent` is a directive in Declarative Pipelines that defines **where/how** the pipeline or a stage runs (which worker node or container).
+
+## Where can you define it?
+- Pipeline level (global): applies to all stages unless overridden.
+- Stage level: overrides global for that stage.
+
+---
+
+## Agent Types
+
+### 1) agent any
+- Runs on any available Jenkins worker node.
+
+Example (groovy):
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps { echo 'Running on any available agent' }
+    }
+  }
+}
+
+---
+
+### 2) agent none
+- No global agent; each stage must define its own agent.
+- Use when different stages need different environments.
+
+Example (groovy):
+pipeline {
+  agent none
+  stages {
+    stage('Build') {
+      agent any
+      steps { echo 'Build on any agent' }
+    }
+    stage('Test') {
+      agent { label 'test-node' }
+      steps { echo 'Test on test-node' }
+    }
+  }
+}
+
+# Jenkins Declarative Pipeline — Agent Directive (Part 2)
+
+### 3) agent { label '...' }
+- Run only on nodes that have a matching label (labels are set on nodes in Jenkins).
+
+Example (groovy):
+pipeline {
+  agent { label 'linux' }
+  stages {
+    stage('Build') {
+      steps { echo 'Running on linux-labeled node' }
+    }
+  }
+}
+
+---
+
+### 4) agent { docker { image '...' } }
+- Run inside a temporary Docker container (tools come from the image).
+- Requires Docker installed on the Jenkins agent host.
+
+Example (groovy):
+pipeline {
+  agent {
+    docker {
+      image 'maven:3.9.6-eclipse-temurin-17'
+      // optional: args '-v /tmp/.m2:/root/.m2'
+    }
+  }
+  stages {
+    stage('Build') {
+      steps {
+        sh 'mvn -v'
+        sh 'mvn clean verify'
+      }
+    }
+  }
+}
+
+---
+
+### 5) agent { dockerfile { ... } }
+- Build a custom image from a Dockerfile in your repo, then run inside it.
+
+Example (groovy):
+pipeline {
+  agent {
+    dockerfile {
+      filename 'Dockerfile'
+      dir 'ci-image'
+      // optional: additionalBuildArgs '--no-cache'
+    }
+  }
+  stages {
+    stage('CI') {
+      steps { sh 'make test' }
+[O    }
+  }
+}
+# Jenkins Declarative Pipeline — Agent Directive (Part 3)
+
+## Special Cases (for awareness)
+- Docker-outside-of-Docker (DooD): mount host docker socket into the job/container to run docker builds.
+- Docker-in-Docker (DinD): run a docker daemon inside a container (less common in Jenkins).
+- If Jenkins/agents are on EC2/VM (not containerized), you typically don’t need DinD/DooD—just install Docker on the node.
+
+---
+
+## Real-World Usage
+- agent any → simple jobs, no special environment.
+- agent none + per-stage agents → heterogeneous pipelines (build on linux, test on windows, deploy on deploy-node).
+- agent { label '...' } → ensure specific tool/OS/hardware (gpu, windows, docker-enabled).
+- agent { docker image } → isolated, repeatable toolchains without installing on nodes.
+- agent { dockerfile } → fully customized CI environment.
+
+---
+
+## Best Practices / Tips
+- Prefer labels to route workloads (e.g., linux, windows, docker, gpu).
+- Use docker agents to avoid dependency conflicts and speed setup.
+- Keep images lean (cache deps, pin versions).
+- With agent none, ensure every stage has an agent.
+- Document node labels and keep them up to date.
+
+---
+
+## Common Issues / Errors
+- Label not found or node offline → builds stuck in queue.
+- Using docker agent but Docker not installed on node → container start fails.
+- agent none without stage-level agent → “No node assigned”.
+- Overweight images → slow pull/start times.
+
+## Troubleshooting / Fixes
+- Verify labels in Manage Nodes; check executors/online status.
+- Install/verify Docker service on agents for docker agents.
+- Add/adjust stage-level agents when using agent none.
+- Optimize images (multi-stage builds, cache dependencies).
+---

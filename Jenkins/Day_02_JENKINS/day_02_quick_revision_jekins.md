@@ -182,7 +182,7 @@ pipeline {
 ---------------------------------------------------------------------------------------
 
 
-A proper .md file for your Jenkins Error Handling Quick Revision should look like this:
+
 
 # Jenkins Error Handling - Quick Revision
 
@@ -261,4 +261,128 @@ retry(3) { sh 'make build' }
 ---
 
 
+# Quick Revision — Parallel Stages (Declarative) + failFast
+
+1. Concept:
+   - Run independent stages at the same time using `parallel`.
+   - Fail fast = stop sibling branches when one fails.
+
+2. Purpose / Real-World Use:
+   - Cut CI time (UT + IT + Lint + Security together).
+   - Run on multiple OS/JDK in parallel.
+   - Save resources by aborting other branches after a critical failure.
+
+3. How it Works / Syntax (pick one):
+   - Basic parallel:
+
+       stage('Quality Gates') {
+         parallel {
+           stage('UT'){ steps { sh 'make test' } }
+           stage('Lint'){ steps { sh 'make lint' } }
+         }
+       }
+
+   - Pipeline-wide fail-fast (Declarative):
+
+       options { parallelsAlwaysFailFast() }
+
+   - Hybrid (inside Declarative using scripted map):
+
+       steps {
+         script {
+           parallel(
+             'Unit': { sh 'make test-unit' },
+             'IT':   { sh 'make test-int' },
+             failFast: true
+           )
+         }
+       }
+
+   - Matrix fail-fast:
+
+       matrix {
+         options { failFast true }
+         /* axes + stages ... */
+       }
+
+4. Common Issues:
+   - Insufficient executors/agents → branches queue or hang.
+   - Misplaced `failFast` → no effect.
+   - Workspace/file collisions across branches.
+   - Wrong agent labels → branch can’t schedule.
+   - Mixed logs → hard to debug.
+
+5. Troubleshooting / Fixes:
+   - Ensure capacity; limit parallel width if needed.
+   - Use correct fail-fast form: `parallelsAlwaysFailFast()` or `parallel(..., failFast: true)` or `matrix { options { failFast true } }`.
+   - Isolate work (`dir()`, `stash/unstash`); avoid shared writes.
+   - Set correct `agent { label '...' }`.
+   - Add `timestamps()` and clear log prefixes.
+
+6. Best Practices:
+   - Parallelize only independent work.
+   - Use fail-fast when partial results are not needed; avoid it when you need full matrix results.
+   - Name branches clearly; add per-branch `timeout`.
+
+
+---
+
+# Jenkins Agent Directive - Quick Revision Notes
+
+## 1. Purpose of Agent
+- Defines **where** (which node/worker) the pipeline or stage will run.
+- Can be applied at:
+  - **Pipeline level** → applies to the whole pipeline.
+  - **Stage level** → overrides global agent for that stage.
+
+---
+
+## 2. Types of Agents
+### a) `any`
+- Runs pipeline/stage on **any available Jenkins node**.
+- Most commonly used default.
+
+### b) `none`
+- Means **no global agent** is assigned.
+- You **must specify agent** at the stage level.
+- Useful when different stages need **different nodes/tools**.
+
+### c) `label`
+- Assigns jobs to nodes with a specific **label**.
+- Example: `agent { label 'linux' }`
+- Real-time use case → run on a node that has required dependencies (like Maven, Docker).
+
+### d) `docker`
+- Runs the stage inside a **Docker container**.
+- Useful if tools should not be installed on Jenkins nodes.
+- Jenkins pulls the Docker image, runs commands, and removes container after completion.
+
+### e) `dockerfile`
+- Similar to `docker`, but Jenkins builds the Docker image using a `Dockerfile` before running.
+- Good for **custom environments**.
+
+---
+
+## 3. Key Points
+- **Global Agent** (`pipeline { agent ... }`) → applies to all stages unless overridden.
+- **Stage-specific Agent** (`stage { agent ... }`) → useful when:
+  - Different tools needed per stage.
+  - Workload separation across nodes.
+
+---
+
+## 4. Real-Time Examples
+- `agent any` → General pipeline where no node restriction is needed.
+- `agent none` + stage-level agents → Build on Linux node, test on Windows node.
+- `agent { label 'docker' }` → Run pipeline only on a node with Docker installed.
+- `agent { docker 'maven:3.8.1' }` → Run build inside Maven container.
+
+---
+
+## 5. Common Mistakes
+- Using `none` at pipeline level but forgetting stage-level agent → pipeline fails.
+- Not configuring correct node labels → jobs stuck in queue.
+- Docker agent without Docker installed on node → job fails.
+
+---
 

@@ -299,3 +299,53 @@
 
 ---
 
+
+## 9. terraform refresh
+
+### Concept
+
+Updates the Terraform state file to match the real-world infrastructure.
+
+### Purpose / Use Case
+
+* Detect and resolve **drift** between Terraform configuration and actual infrastructure.
+* Ensures state file reflects current resource properties.
+* Useful before running `terraform plan` or `terraform apply` to see real-time changes.
+
+### Syntax
+
+```
+terraform refresh
+```
+
+### Example
+
+```
+terraform refresh
+```
+
+This will read the current state of all resources and update the state file without making any changes to the infrastructure.
+
+### Key Notes
+
+* **Does not create, modify, or destroy resources** — only updates the state.
+* Can detect manual changes done outside Terraform.
+* Useful in multi-team environments where infra can be modified directly.
+
+### Common Issues / Errors
+
+* Resources deleted outside Terraform → refresh marks them as “tainted” or missing.
+* Permission or API issues → unable to read resource state.
+
+### Troubleshooting / Fixes
+
+* Verify credentials and API access.
+* Check resource IDs in configuration match actual infrastructure.
+* Run `terraform plan` after refresh to review drift.
+
+### Best Practices / Tips
+
+* Always run `terraform refresh` before `plan` in environments with potential manual changes.
+* Backup the state file before refreshing, especially in production.
+* Combine with `terraform plan` to safely review differences before applying changes.
+

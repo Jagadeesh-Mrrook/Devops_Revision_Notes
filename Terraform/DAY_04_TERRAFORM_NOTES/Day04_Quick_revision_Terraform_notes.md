@@ -40,4 +40,21 @@
 * Verify configuration matches existing infrastructure.
 * Use `terraform plan` after import to ensure no unwanted changes.
 * Best: import **one resource at a time**, document all imported resources, combine with remote backend for team collaboration.
+---
+
+## Terraform Drift Quick Revision Notes
+
+* **Drift:** Manual changes in cloud cause mismatch between state file and configuration.
+* **Detect:** `terraform refresh` updates state; `terraform plan` shows difference.
+* **Accept changes:** Update configuration file to match state → plan shows no drift.
+* **Ignore changes:** Keep configuration as-is → `terraform apply` overwrites cloud with config.
+* **Import new resources:** `terraform import <resource> <id>` to track manually created resources.
+* **Ignore specific attributes:** Use `lifecycle { ignore_changes = [attribute1, attribute2] }` in resource.
+* **Best Practices:**
+
+  * Use remote backend + state locking.
+  * Always refresh before plan.
+  * Automate refresh + plan in CI/CD pipelines.
+  * Enable versioning for remote state for rollback.
+  * Never apply blindly without reviewing drift.
 

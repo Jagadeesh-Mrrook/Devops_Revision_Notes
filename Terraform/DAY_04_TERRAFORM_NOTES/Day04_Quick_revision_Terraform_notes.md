@@ -31,6 +31,33 @@
 * Local backend: separate state + backup; Remote backend: workspace-specific keys + versioning.
 * Helps **isolate dev, staging, prod environments** safely.
 * Always check current workspace before applying changes to avoid affecting wrong env.
+---
+
+
+* **Two main approaches:**
+
+  1. **Separate Environment Directories**
+
+     * Different folders for dev/qa/prod.
+     * Each has own tfvars + backend.
+     * Best for large orgs, strict isolation.
+
+  2. **Workspaces + Variables**
+
+     * Same config, multiple state files.
+     * `terraform.workspace` used for names & maps.
+     * Workspace-specific tfvars (`dev.tfvars`, `prod.tfvars`).
+     * Quick, less overhead.
+
+* **Real-world use:**
+
+  * Workspaces → small setups.
+  * Directories → enterprise setups.
+  * Sometimes both combined.
+
+* **Best practice:** Always isolate states, suffix/prefix names with env, document setup.
+
+-----
 
 #### 5. Importing Existing Infrastructure
 

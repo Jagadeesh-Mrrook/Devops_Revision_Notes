@@ -28,21 +28,23 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 - [ ] Using variables in modules and resources
 
 ---
-
 ## 4. **State Management**
 - [ ] Terraform state (local & remote)
 - [ ] Backend configuration (S3, GCS, Azure Storage, Consul)
 - [ ] State locking & versioning
 - [ ] Workspaces for multi-environment setups
 - [ ] Importing existing infrastructure
+- [ ] State file encryption (e.g., KMS when using S3 backend)
+- [ ] terraform state subcommands (list, mv, rm, show)
 
 ---
-
 ## 5. **Modules**
 - [ ] Creating reusable modules
 - [ ] Module inputs and outputs
 - [ ] Calling modules from local paths, Git, registry
 - [ ] Module versioning and best practices
+- [ ] Publishing modules to Terraform Registry (internal/private)
+- [ ] Nested modules & composition
 
 ---
 
@@ -50,15 +52,20 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 - [ ] `local-exec`
 - [ ] `remote-exec`
 - [ ] `file` provisioner
+- [ ] null_resource with triggers
 - [ ] When and why to use provisioners (real-world scenarios)
 - [ ] Avoiding anti-patterns with provisioners
 
 ---
-
 ## 7. **Expressions & Functions**
 - [ ] Terraform expressions (conditionals, operators)
 - [ ] Built-in functions (string, numeric, collection, date)
 - [ ] Using expressions in resource arguments
+- [ ] Dynamic blocks (`dynamic` keyword)
+- [ ] for_each vs count (scaling resources)
+- [ ] for loops & for expressions
+- [ ] depends_on (explicit dependency handling)
+
 
 ---
 
@@ -69,15 +76,15 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 - [ ] Diff and plan output interpretation
 
 ---
-
 ## 9. **CI/CD & Automation**
 - [ ] Terraform integration in Jenkins pipelines
 - [ ] Terraform Cloud & remote operations
 - [ ] Automating multi-environment deployments
 - [ ] Using `terraform fmt` & `validate` in CI/CD
+- [ ] Terraform plan as code review artifact (storing plan files in pipeline)
+- [ ] Terraform workspace selection in pipelines
 
 ---
-
 ## 10. **Security & Best Practices**
 - [ ] Storing secrets securely (Vault, environment variables)
 - [ ] Sensitive variables & outputs
@@ -85,6 +92,8 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 - [ ] Avoid hardcoding credentials
 - [ ] Minimal use of provisioners
 - [ ] Using `terraform fmt`, `validate`, and `linting tools`
+- [ ] Enforce policies with Sentinel / OPA (Policy as Code)
+- [ ] .terraformignore usage (when building modules)
 
 ---
 
@@ -96,13 +105,13 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 - [ ] Handling drift between code & real infrastructure
 
 ---
-
 ## 12. **Hands-On Scenarios**
 - [ ] Provision a VPC with subnets, route tables, and security groups
 - [ ] Deploy EC2 instances (or equivalent compute) using modules
 - [ ] Multi-environment setup (dev/qa/prod) with workspaces
 - [ ] Integrate Terraform with CI/CD pipeline
 - [ ] Manage remote state and collaborate in a team environment
+
 
 ---
 

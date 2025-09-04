@@ -111,7 +111,9 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 - [ ] Multi-environment setup (dev/qa/prod) with workspaces
 - [ ] Integrate Terraform with CI/CD pipeline
 - [ ] Manage remote state and collaborate in a team environment
-
+- [ ] Use for_each/count to create multiple subnets/instances
+- [ ] Create infrastructure using Terraform + Ansible together (common in real projects)
+- [ ] Drift detection with terraform plan + auto-remediation
 
 ---
 

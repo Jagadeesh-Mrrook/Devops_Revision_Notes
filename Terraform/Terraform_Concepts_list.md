@@ -5,7 +5,7 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 ---
 
 ## 1. **Terraform Fundamentals**
-- [ ] What is Terraform & why it's used
+- [x] What is Terraform & why it's used
 - [ ] Terraform architecture & workflow
 - [ ] Installation (Linux, Windows, MacOS)
 - [ ] Terraform CLI overview (`init`, `plan`, `apply`, `destroy`, `validate`, `fmt`, `taint`, `import`)
@@ -55,6 +55,8 @@ A comprehensive list of Terraform concepts, features, and integrations for inter
 - [ ] null_resource with triggers
 - [ ] When and why to use provisioners (real-world scenarios)
 - [ ] Avoiding anti-patterns with provisioners
+- [ ] Ssh connectivity with the resource(ec2) created.
+
 
 ---
 ## 7. **Expressions & Functions**

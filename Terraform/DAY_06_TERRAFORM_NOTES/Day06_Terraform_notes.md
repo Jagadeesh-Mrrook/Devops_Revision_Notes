@@ -578,3 +578,103 @@ resource "aws_instance" "db" {
 * Use **null\_resource + triggers** for one-time tasks not tied to real resources.
 * Avoid chaining provisioners across resources; manage dependencies explicitly.
 
+---
+
+# Terraform SSH Key Management for Provisioners
+
+## 1. Overview
+
+* Terraform uses **provisioners** (remote-exec, file) to configure newly created resources.
+* Provisioners require **SSH connectivity** to the target EC2 instances.
+* Secure management of SSH keys is critical in production environments.
+
+---
+
+## 2. Key Generation
+
+* Security team generates an SSH key pair on the Ansible/Jenkins EC2 instance.
+
+```bash
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/ansible_key
+```
+
+* Outputs:
+
+  * `ansible_key` → **private key**
+  * `ansible_key.pub` → **public key**
+
+---
+
+## 3. Private Key Storage
+
+* Store the **private key** securely in **AWS Secrets Manager**.
+* Ansible or Jenkins agent fetches it dynamically when needed.
+* No manual copying of private keys to other machines.
+
+---
+
+## 4. Public Key Injection via Terraform
+
+* Use `aws_key_pair` resource to register the public key in AWS.
+
+```hcl
+resource "aws_key_pair" "ansible" {
+  key_name   = "ansible-key"                # Custom key name
+  public_key = file("~/.ssh/ansible_key.pub")  # Path to public key
+}
+```
+
+* Attach this key to EC2 instances:
+
+```hcl
+resource "aws_instance" "app" {
+  ami           = "ami-0abcd1234"
+  instance_type = "t2.micro"
+  key_name      = aws_key_pair.ansible.key_name
+}
+```
+
+---
+
+## 5. SSH Connectivity for Provisioners
+
+* Provisioners like `remote-exec` or `file` use the private key to connect:
+
+```hcl
+provisioner "remote-exec" {
+  inline = [
+    "sudo apt-get update -y",
+    "sudo apt-get install -y nginx"
+  ]
+}
+
+connection {
+  type        = "ssh"
+  user        = "ubuntu"
+  private_key = file("/path/to/fetched/private/key")
+  host        = self.public_ip
+}
+```
+
+* The private key is fetched securely from Secrets Manager or Jenkins credentials.
+
+---
+
+## 6. Security Considerations
+
+* **Private key never stored in Terraform code or repository.**
+* **IAM Role** attached to Jenkins/Ansible EC2 instance provides temporary credentials to access Secrets Manager.
+* Temporary credentials are auto-refreshed by AWS.
+* Public key is injected into EC2 instances automatically during creation.
+
+---
+
+## 7. Summary Flow
+
+1. Security team generates SSH key pair on Ansible/Jenkins EC2.
+2. Private key stored in Secrets Manager.
+3. Terraform `aws_key_pair` uses public key to create key pair in AWS.
+4. EC2 instances launched with this key.
+5. Terraform provisioners or Ansible connect to EC2 using private key.
+6. IAM roles ensure secure and temporary access for fetching secrets.
+

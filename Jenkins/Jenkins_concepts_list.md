@@ -73,6 +73,12 @@ A comprehensive list of Jenkins concepts, features, and integrations for intervi
   - [ ] On-prem servers (SSH, Ansible)
   - [ ] AWS (CodeDeploy, Lambda)
   - [ ] Kubernetes (kubectl, Helm)
+- [ ] Rollback strategies  
+  - [ ] Manual rollback using `input` step in Jenkins pipelines  
+  - [ ] Automated rollback using `post { failure { ... } }` in Jenkinsfile  
+  - [ ] Kubernetes rollback with `kubectl rollout undo`  
+  - [ ] Helm rollback using `helm rollback <release> <revision>`  
+  - [ ] Store and version artifacts/images for rollback safety
 
 ---
 

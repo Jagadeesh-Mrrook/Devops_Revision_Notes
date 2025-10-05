@@ -1419,6 +1419,80 @@ http {
 
 ---
 
+# HTTP Response Decompression (Client-Side)
+
+## 🔹 1. Overview
+
+When servers like **NGINX** compress responses (using gzip or brotli), they send them to clients in a compressed format.
+The decompression (uncompression) is handled **automatically** by the client's networking layer — not by front-end code.
+
+---
+
+## 🔹 2. Compression at Server Side
+
+* Done by web servers (NGINX, Apache, etc.) using modules like **gzip** or **brotli**.
+* Response header example:
+
+  ```http
+  Content-Encoding: gzip
+  ```
+
+---
+
+## 🔹 3. Decompression at Client Side
+
+### ✅ Web Browsers
+
+* Browser sends:
+
+  ```http
+  Accept-Encoding: gzip, deflate, br
+  ```
+* The browser’s **networking engine** (not JS code) decompresses responses automatically before rendering or passing to JavaScript.
+
+### ✅ Mobile Applications
+
+* Apps use HTTP libraries like:
+
+  * Android → `OkHttp`, `Retrofit`, `Volley`
+  * iOS → `NSURLSession`, `Alamofire`
+  * Flutter → `http`, `dio`
+  * React Native → `fetch()`, `axios`
+* These libraries automatically handle gzip/brotli decompression internally.
+
+### ❌ No Manual Logic Needed
+
+Front-end or app developers don’t write decompression logic — it’s already built into these networking libraries.
+
+---
+
+## 🔹 4. When Manual Decompression Is Needed
+
+Only if:
+
+* You use a **custom TCP socket** instead of HTTP libraries.
+* You download a **compressed file** (like `.zip` or `.gz`) intentionally and want to extract its contents manually.
+
+---
+
+## 🔹 5. Summary
+
+| Platform                  | Responsible for Decompression                    | Manual Logic Required? |
+| ------------------------- | ------------------------------------------------ | ---------------------- |
+| Web Browser               | Browser Engine (network stack)                   | ❌ No                   |
+| Android/iOS App           | HTTP Client Library (OkHttp, NSURLSession, etc.) | ❌ No                   |
+| Custom TCP or Binary File | Your App Logic                                   | ✅ Yes                  |
+
+---
+
+### ✅ Key Takeaway
+
+> Decompression always happens on the client side,
+> but it’s **handled automatically by the networking layer**, not by your front-end code.
+
+---
+
+
 ### **CDN Integration**
 
 • **Concept / What:**

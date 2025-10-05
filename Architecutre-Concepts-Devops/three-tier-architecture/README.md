@@ -1,41 +1,42 @@
 # Three-Tier Architecture - Checklist
 
 ## 1. Frontend Layer
-- [ ] Web app vs Mobile app (React / React Native)
-- [ ] Static vs dynamic content
-- [ ] UI assets (images, templates, CSS, JS files)
-- [ ] Serving static content (S3 + CloudFront vs Web server on EC2/K8s)
-- [ ] Frontend pods in Kubernetes
-- [ ] Frontend request flow (user → browser/app → frontend → backend)
-- [ ] HTTPS and TLS (certificates, handshake, termination at ALB vs end-to-end)
-- [ ] Common issues and troubleshooting (CORS, slow load, asset caching)
+- [x] Web app vs Mobile app (React / React Native)
+- [x] Static vs dynamic content
+- [x] UI assets (images, templates, CSS, JS files)
+- [x] Serving static content (S3 + CloudFront vs Web server on EC2/K8s)
+- [x] Frontend pods in Kubernetes
+- [x] Frontend request flow (user → browser/app → frontend → backend)
+- [x] HTTPS and TLS (certificates, handshake, termination at ALB vs end-to-end)
+- [x] Common issues and troubleshooting (CORS, slow load, asset caching)
 
 ## 2. Backend / Application Layer
 ### 2.1 Application Server
-- [ ] Application server (Node.js, Java, etc.)
-- [ ] REST API design and request flow
-- [ ] Dynamic content generation
-- [ ] Connection with frontend (API endpoints)
-- [ ] Load balancing (ALB, NLB) and session handling
-- [ ] Auto Scaling of backend pods or EC2 instances
-- [ ] Security: WAF, IAM roles, API throttling
-- [ ] Common issues and troubleshooting (500 errors, latency, scaling failures)
+- [x] Application server (Node.js, Java, etc.)
+- [x] REST API design and request flow
+- [x] Dynamic content generation
+- [x] Connection with frontend (API endpoints)
+- [x] Load balancing (ALB, NLB) and session handling
+- [x] Auto Scaling of backend pods or EC2 instances
+- [x] Security: WAF, IAM roles, API throttling
+- [x] Common issues and troubleshooting (500 errors, latency, scaling failures)
 
 ### 2.2 Web Server
-- [ ] Static content serving (Nginx, Apache)
-- [ ] Reverse proxy configuration to backend
-- [ ] SSL termination at web server
-- [ ] Caching and compression (gzip, CDN integration)
-- [ ] Common issues and troubleshooting (misconfigured proxies, TLS handshake failures)
+- [x] Static content serving (Nginx, Apache)
+- [x] Reverse proxy configuration to backend
+- [x] SSL termination at web server
+- [x] Caching and compression (gzip, CDN integration)
+- [x] Common issues and troubleshooting (misconfigured proxies, TLS handshake failures)
 
 ## 3. Database Layer
-- [ ] Relational vs NoSQL database selection
-- [ ] Connection pooling and database access from app
-- [ ] Scaling strategies (vertical, read replicas, sharding)
-- [ ] Backup and restore, snapshot strategies
-- [ ] Security: encryption at rest, IAM policies
-- [ ] High availability and failover
-- [ ] Common issues and troubleshooting (connection limits, replication lag, deadlocks)
+- [x] Relational vs NoSQL database selection
+- [x] Connection pooling and database access from app
+- [x] Scaling strategies (vertical, read replicas, sharding)
+- [x] Backup and restore, snapshot strategies
+- [x] Security: encryption at rest, IAM policies
+- [x] Database connectivity with the backend server
+- [x] High availability and failover
+- [x] Common issues and troubleshooting (connection limits, replication lag, deadlocks)
 
 ## 4. Request and Data Flow
 - [ ] Typical user request flow (Browser/App → Frontend → Backend → Database)

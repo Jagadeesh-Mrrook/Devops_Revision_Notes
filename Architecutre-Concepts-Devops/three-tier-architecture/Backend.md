@@ -872,3 +872,683 @@ spec:
 * Health checks ensure only healthy instances serve requests.
 
 ---
+
+## 2.2 Web Server - Detailed Notes
+
+### Web Server
+
+• **Concept / What:**
+A web server is software (and hardware) that serves content over HTTP/HTTPS. It handles client requests for static or dynamic content, either serving it directly or forwarding to backend applications.
+
+• **Why / Purpose / Use Case:**
+
+* Serve content efficiently to clients.
+* Offload backend servers by handling static content.
+* Enable secure communication via SSL/TLS.
+* Act as a reverse proxy to backend applications.
+* Provide caching, compression, and centralized logging.
+
+• **How it Works / Steps / Syntax:**
+
+```
+Client (Browser) ──HTTP/HTTPS──► Web Server ──► Static Content
+                                  │
+                                  └─► Reverse Proxy ──► Backend Application
+```
+
+Stepwise:
+
+1. Client sends request to web server.
+2. If static, server responds directly.
+3. If dynamic, forwards to backend server.
+4. Response returns to client via web server.
+
+**AWS/K8s Examples:**
+
+* EC2 with Nginx serving frontend, proxying API calls to Node.js backend.
+* S3 + CloudFront for static content.
+* Nginx Ingress in Kubernetes routing to multiple services.
+
+• **Common Issues / Errors:**
+
+* Port misconfiguration (80/443)
+* Misconfigured SSL/TLS → handshake failures
+* Wrong root path → 404 Not Found
+* Backend proxy misrouting → 502/504 errors
+
+• **Troubleshooting / Fixes:**
+
+* Check web server logs (`/var/log/nginx/error.log`, `/var/log/httpd/error_log`)
+* Verify SSL certificates and ports
+* Ensure correct root paths and backend addresses
+* Clear cache if static content not updated
+
+• **Best Practices / Tips:**
+
+* Serve static content directly, offloading backend.
+* Enable HTTPS with proper certificates.
+* Use reverse proxy for dynamic requests.
+* Enable gzip/brotli compression.
+* Integrate CDN for faster global delivery.
+
+---
+
+### Static Content Serving (Nginx, Apache)
+
+• **Concept / What:**
+Serving static files (HTML, CSS, JS, images) directly from web server without hitting backend.
+
+• **Why / Purpose / Use Case:**
+
+* Faster delivery of files
+* Reduced backend load
+* Better scalability
+
+• **How it Works / Steps / Syntax:**
+**Nginx:**
+
+```nginx
+server {
+  listen 80;
+  server_name myapp.com;
+  root /var/www/html;
+  index index.html;
+  location / {
+    try_files $uri $uri/ =404;
+  }
+}
+```
+
+**Apache:**
+
+```apache
+<VirtualHost *:80>
+  DocumentRoot "/var/www/html"
+  ServerName myapp.com
+  <Directory "/var/www/html">
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+  </Directory>
+</VirtualHost>
+```
+
+**AWS Example:** S3 + CloudFront or EC2 with Nginx.
+
+• **Common Issues / Errors:**
+
+* File permissions (`403 Forbidden`)
+* Wrong root or index (`404 Not Found`)
+* Cache not updating
+* MIME type mismatch
+
+• **Troubleshooting / Fixes:**
+
+* Check logs
+* Correct permissions (`chmod 644` files, `755` dirs)
+* Clear cache
+* Fix MIME types in config
+
+• **Best Practices / Tips:**
+
+* Dedicated static directory
+* Enable gzip/brotli
+* Use CDN
+* Cache-busting for updated assets
+* Serve over HTTPS
+
+---
+
+### Reverse Proxy
+
+• **Concept / What:**
+A reverse proxy is a server that forwards client requests to backend servers, hiding backend details and managing traffic.
+
+• **Why / Purpose / Use Case:**
+
+* Load balancing
+* Security / IP hiding
+* SSL termination
+* Caching & compression
+* Centralized logging
+
+• **How it Works / Steps / Syntax:**
+
+```
+Client → Reverse Proxy → Backend Servers
+```
+
+Stepwise:
+
+1. Client sends request to proxy.
+2. Proxy decides which backend handles it.
+3. Backend processes and returns response to proxy.
+4. Proxy sends response to client.
+
+**AWS/K8s Examples:**
+
+* ALB forwarding requests to EC2/ECS.
+* Nginx Ingress Controller in Kubernetes.
+
+• **Common Issues / Errors:**
+
+* Misconfigured proxy → 502/504
+* Backend unavailable
+* Wrong headers → client IP lost
+* SSL/TLS misconfiguration
+
+• **Troubleshooting / Fixes:**
+
+* Check proxy logs
+* Verify backend health
+* Correct proxy headers (`X-Forwarded-For`)
+* Ensure SSL certs valid
+
+• **Best Practices / Tips:**
+
+* Enable health checks for backends
+* Use sticky sessions if needed
+* Cache static content
+* Offload SSL at proxy
+* Monitor proxy performance
+
+---
+
+### Static Content Serving (Nginx, Apache) - Notes
+
+• **Concept / What:**
+Serve static files (HTML, CSS, JS, images, fonts, videos) directly from the web server without hitting backend applications.
+
+• **Why / Purpose / Use Case:**
+
+* Faster content delivery
+* Reduce backend load
+* Improve scalability and cost efficiency
+
+• **How it Works / Steps / Syntax:**
+
+1. Install Nginx/Apache
+2. Place static files in a directory (e.g., `/var/www/html`)
+3. Configure server block:
+   **Nginx:**
+
+   ```nginx
+   server {
+       listen 80;
+       server_name example.com;
+       root /var/www/html;
+       index index.html;
+       location / {
+           try_files $uri $uri/ =404;
+       }
+   }
+   ```
+
+   **Apache:**
+
+   ```apache
+   <VirtualHost *:80>
+     DocumentRoot "/var/www/html"
+     ServerName example.com
+     <Directory "/var/www/html">
+       Options Indexes FollowSymLinks
+       AllowOverride None
+       Require all granted
+     </Directory>
+   </VirtualHost>
+   ```
+4. Test configuration (`sudo nginx -t`)
+5. Reload Nginx (`sudo systemctl reload nginx`)
+
+• **Common Issues / Errors:**
+
+* Wrong file permissions (`403 Forbidden`)
+* Incorrect root path or index (`404 Not Found`)
+* Cached old assets
+* MIME type mismatch
+
+• **Troubleshooting / Fixes:**
+
+* Check server logs
+* Correct permissions (`chmod 644` files, `755` dirs)
+* Clear cache
+* Fix MIME types in configuration
+
+• **Best Practices / Tips:**
+
+* Dedicated static directory
+* Enable gzip/brotli compression
+* Use cache headers for static assets
+* Serve over HTTPS
+* CI/CD integration for deploying static files
+
+• **DevOps vs Developer Responsibility:**
+
+* **DevOps:** Install/configure web server, SSL/TLS, caching, reverse proxy, reload server
+* **Developer:** Provide static files (build artifacts), recommend caching or headers
+
+---
+
+### Reverse Proxy Configuration to Backend - Notes
+
+• **Concept / What:**
+A reverse proxy is a server (like Nginx or Apache) that sits between clients and backend servers, forwarding client requests to the backend and returning responses to clients. Backend servers are hidden from the client.
+
+• **Why / Purpose / Use Case:**
+
+* Load balancing across multiple backend servers
+* Security: hide backend servers from direct access
+* SSL termination: handle HTTPS at proxy
+* Caching and compression to reduce backend load
+* Centralized logging for monitoring requests
+
+• **How it Works / Steps / Syntax:**
+
+1. Client sends request to reverse proxy.
+2. Proxy selects backend server (round-robin, least connections, IP hash).
+3. Request forwarded to backend.
+4. Backend processes request and returns response.
+5. Proxy sends response to client.
+
+**Nginx Example:**
+
+```nginx
+http {
+    upstream backend_servers {
+        server 10.0.0.1:3000;
+        server 10.0.0.2:3000;
+        server 10.0.0.3:3000;
+    }
+
+    server {
+        listen 80;
+        server_name example.com;
+
+        location / {
+            proxy_pass http://backend_servers;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+}
+```
+
+• **Common Issues / Errors:**
+
+* 502 Bad Gateway / 504 Gateway Timeout
+* Incorrect headers (lost client IP)
+* SSL misconfiguration
+* Backend unreachable or misconfigured
+
+• **Troubleshooting / Fixes:**
+
+* Check proxy logs
+* Verify backend server health and ports
+* Ensure `X-Forwarded-For` headers set correctly
+* Validate SSL certificates if using HTTPS
+
+• **Best Practices / Tips:**
+
+* Enable health checks for backend servers
+* Use sticky sessions if required
+* Offload SSL at proxy
+* Cache frequently requested content
+* Monitor proxy performance and errors
+
+• **DevOps vs Developer Responsibility:**
+
+* **DevOps:** Install and maintain reverse proxy server, implement provided configuration, ensure SSL, connectivity, and performance
+* **Developer:** Provide routing rules or backend mapping for proxy
+
+---
+
+## 2.2 Web Server - SSL/TLS, TLS Handshake, and Termination (Detailed Notes)
+
+### 1️⃣ TLS Encryption
+
+• **Concept / What:**
+TLS (Transport Layer Security) encrypts traffic between client and web server, ensuring confidentiality, integrity, and authentication.
+
+• **Why / Purpose / Use Case:**
+
+* Protect sensitive data (login forms, API calls, payments)
+* Prevent eavesdropping and MITM attacks
+* Required for HTTPS
+
+• **How it Works / Flow:**
+
+* Uses symmetric encryption for data transfer
+* Keys exchanged securely using asymmetric encryption during TLS handshake
+
+### 2️⃣ TLS Handshake
+
+• **Concept / What:**
+Process to establish a secure connection, negotiate encryption, and authenticate server.
+
+• **Steps / Flow:**
+
+1. Client Hello: supported TLS versions, ciphers, random number
+2. Server Hello: selected TLS version, cipher, random number
+3. Server Certificate: CA-signed certificate sent to client
+4. Key Exchange: client/server exchange session keys
+5. Handshake Complete: session keys used for encrypted communication
+
+**Diagram:**
+
+```
+Client (Browser)
+   │
+   │--- Client Hello --->
+   │<-- Server Hello ----
+   │<-- Server Certificate & Key Exchange ---
+   │--- Key Exchange ---->
+   │<-- Handshake Complete ---
+Encrypted HTTPS Communication Begins
+```
+
+### 3️⃣ TLS/SSL Termination
+
+• **Concept / What:**
+
+* Web server or reverse proxy decrypts HTTPS traffic.
+* **End-to-End TLS:** traffic remains encrypted to backend, backend decrypts TLS.
+
+• **Why / Purpose / Use Case:**
+
+* Offload CPU-intensive encryption from backend (normal termination)
+* End-to-End TLS ensures encryption throughout path for sensitive data
+
+• **How it Works / Flow:**
+
+```
+Client (HTTPS) ──TLS Handshake──► Web Server ──HTTP──► Backend  (Normal TLS Termination)
+Client (HTTPS) ──TLS Handshake──► Web Server ──HTTPS──► Backend  (End-to-End TLS)
+```
+
+• **Nginx Example for End-to-End TLS:**
+
+```nginx
+upstream backend_servers {
+    server 10.0.0.1:443;
+    server 10.0.0.2:443;
+}
+
+server {
+    listen 443 ssl;
+    server_name example.com;
+
+    ssl_certificate /etc/ssl/certs/example.crt;
+    ssl_certificate_key /etc/ssl/private/example.key;
+
+    location / {
+        proxy_pass https://backend_servers;
+        proxy_ssl_certificate /etc/ssl/certs/client.crt;
+        proxy_ssl_certificate_key /etc/ssl/private/client.key;
+        proxy_ssl_verify on;
+    }
+}
+```
+
+### 4️⃣ Certificate Authority (CA) & Certificates
+
+• **Concept / What:**
+CA issues digital certificates to verify server identity and enable secure key exchange.
+
+• **Where Stored:**
+
+* **Server directories:** `/etc/ssl/certs/` (certificate), `/etc/ssl/private/` (private key)
+* **AWS Certificate Manager (ACM):** Managed storage, auto-renewal, integrated with ALB/NLB/CloudFront
+* **AWS Secrets Manager:** Secure storage for custom/internal certificates, supports rotation
+
+• **How Used in TLS Handshake:**
+
+1. Server sends certificate to client
+2. Client verifies against trusted CA list
+3. If valid → handshake continues; if invalid → warning/error
+
+• **Best Practices:**
+
+* Use TLS 1.2/1.3 only, strong ciphers
+* Store certificates securely; automate renewals
+* Offload TLS at web server/load balancer
+* Enable HSTS headers
+* Prefer ACM or Secrets Manager for automation/security
+
+### 5️⃣ Common Issues & Troubleshooting
+
+| Issue                       | Cause                             | Fix                         |
+| --------------------------- | --------------------------------- | --------------------------- |
+| Handshake failure           | Protocol/cipher mismatch          | Update TLS versions/ciphers |
+| Expired/invalid certificate | Certificate expired/misconfigured | Renew/replace certificate   |
+| Wrong certificate path      | Web server misconfigured          | Correct paths in config     |
+| Weak cipher enabled         | Security risk                     | Disable weak ciphers        |
+
+### 6️⃣ DevOps Role
+
+* Install/configure web server/load balancer for TLS termination
+* Deploy/manage certificates (ACM, Secrets Manager, or server)
+* Monitor TLS handshake logs and troubleshoot errors
+* Ensure backend connectivity and optionally enable end-to-end TLS
+
+---
+
+## 2.2 Web Server – Caching, Compression, and CDN – Detailed Notes
+
+### **Caching (Web Server & CDN)**
+
+• **Concept / What:**
+Temporarily store frequently accessed content to reduce backend load and serve faster responses.
+
+• **Why / Purpose / Use Case:**
+
+* Reduce backend server load
+* Improve response time and performance
+* Enhance scalability and global access (via CDN)
+
+• **How it Works / Steps / Syntax:**
+
+1. Web Server Cache (NGINX/Apache) stores hot/frequently requested responses locally.
+2. CDN (CloudFront, Akamai, etc.) caches content at edge locations near users.
+3. Only requested content is cached; less-accessed data is evicted automatically.
+4. Cache TTL (Time To Live) controls how long content remains valid.
+
+• **Common Issues / Errors:**
+
+* Cache stale data
+* Misconfigured TTL → content outdated or too short-lived
+* CDN cache miss → slower response
+
+• **Troubleshooting / Fixes:**
+
+* Invalidate CDN cache on updates
+* Adjust TTL and cache keys
+* Monitor cache hit ratio and performance metrics
+
+• **Best Practices / Tips:**
+
+* Cache static content fully (images, CSS, JS, videos)
+* Cache dynamic content selectively with short TTL
+* Use LRU eviction to manage cache size
+* Monitor and adjust caching based on traffic patterns
+
+---
+
+### **Compression**
+
+• **Concept / What:**
+Reduce the size of responses (HTML, CSS, JS) before sending to clients to save bandwidth and improve load time.
+
+• **Why / Purpose / Use Case:**
+
+* Faster delivery over network
+* Lower bandwidth usage
+* Improved user experience
+
+• **How it Works / Steps / Syntax:**
+
+* Enable gzip/brotli modules in NGINX/Apache
+* Compress text-based content
+* Example (NGINX gzip):
+
+```nginx
+http {
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json;
+    gzip_min_length 256;
+    gzip_comp_level 5;
+}
+```
+
+• **Common Issues / Errors:**
+
+* Compression not applied → slow performance
+* Wrong MIME type → compression fails
+
+• **Troubleshooting / Fixes:**
+
+* Enable correct modules
+* Verify MIME types and headers
+* Test with browser dev tools or `curl -I`
+
+• **Best Practices / Tips:**
+
+* Always compress text-based responses
+* Combine with caching for best performance
+* Monitor CPU usage (compression consumes resources)
+
+---
+
+### **CDN Integration**
+
+• **Concept / What:**
+Globally distributed servers that cache and deliver content closer to end-users for faster access.
+
+• **Why / Purpose / Use Case:**
+
+* Reduce latency for global users
+* Offload origin servers
+* Improve availability and scalability
+
+• **How it Works / Steps / Syntax:**
+
+1. Configure origin (web server or S3 bucket)
+2. Define cache behavior (paths, TTL, compression)
+3. Serve users: CDN serves cached content; on cache miss, fetch from origin
+4. Only requested content is cached, less accessed content evicted automatically
+
+• **Common Issues / Errors:**
+
+* Incorrect cache policy → stale content
+* Misconfigured origin → CDN unable to fetch content
+* TTL too long → outdated content served
+
+• **Troubleshooting / Fixes:**
+
+* Invalidate cache for updated content
+* Adjust TTL and cache paths
+* Ensure origin server is reachable and serving correct headers
+
+• **Best Practices / Tips:**
+
+* Cache static assets extensively (images, CSS, JS)
+* Cache dynamic content selectively
+* Enable compression at both web server and CDN
+* Monitor cache hit/miss ratio for optimization
+
+---
+
+### **DevOps vs Developer Responsibilities**
+
+| Task                                   | DevOps | Developer                |
+| -------------------------------------- | ------ | ------------------------ |
+| Install & configure web server         | ✅      | ❌                        |
+| Enable caching/compression modules     | ✅      | ❌ (guidance only)        |
+| Configure CDN origin & cache policies  | ✅      | ❌ (advise content rules) |
+| Provide static content/build artifacts | ❌      | ✅                        |
+| Decide cacheable paths, headers, TTL   | ❌      | ✅                        |
+| Monitor performance & cache hit ratio  | ✅      | ❌                        |
+
+
+---
+
+## 2.2 Web Server – Common Issues & Troubleshooting – Detailed Notes
+
+### **Common Issues / Errors**
+
+1. **4XX Errors (Client-side)**
+
+   * **Cause:** Incorrect URLs, missing files, wrong permissions.
+   * **Symptoms:** 403 Forbidden, 404 Not Found.
+
+2. **5XX Errors (Server-side)**
+
+   * **Cause:** Backend server down, misconfigured reverse proxy, application crashes.
+   * **Symptoms:** 500 Internal Server Error, 502 Bad Gateway, 504 Gateway Timeout.
+
+3. **TLS/SSL Errors**
+
+   * **Cause:** Expired/mismatched certificates, unsupported TLS versions, incorrect key/cert permissions.
+   * **Symptoms:** Browser warnings, handshake failures, unable to establish HTTPS.
+
+4. **Performance / Latency Issues**
+
+   * **Cause:** High CPU/memory usage, unoptimized caching, database slowness.
+   * **Symptoms:** Slow response times, high server load.
+
+5. **Configuration Syntax Errors**
+
+   * **Cause:** Typos or misconfigurations in NGINX/Apache config files.
+   * **Symptoms:** Server fails to reload, errors during `nginx -t` or `apachectl configtest`.
+
+---
+
+### **Troubleshooting / Fixes**
+
+1. **Check Server Logs**
+
+   * NGINX: `/var/log/nginx/error.log`
+   * Apache: `/var/log/apache2/error.log`
+   * Look for backend errors, misrouted requests, SSL/TLS issues.
+
+2. **Validate Backend Health**
+
+   * Ensure backend servers are running and reachable.
+   * Verify upstream IPs and ports.
+
+3. **Check TLS/SSL Certificates**
+
+   * Test handshake: `openssl s_client -connect domain:443`
+   * Renew expired certificates.
+   * Correct file permissions: Private key `600`, certificate `644`.
+
+4. **Verify File Permissions & Root Paths**
+
+   * Directories: `755`
+   * Files: `644`
+   * Correct `root` (NGINX) or `DocumentRoot` (Apache) paths.
+
+5. **Performance Tuning**
+
+   * Enable caching and compression (gzip/brotli).
+   * Adjust worker processes in NGINX.
+   * Use CDN for global content delivery.
+
+6. **Validate Configuration Syntax**
+
+   * NGINX: `sudo nginx -t`
+   * Apache: `sudo apachectl configtest`
+   * Correct errors before reload.
+
+---
+
+### **Best Practices / Tips**
+
+* Monitor logs and server metrics regularly.
+* Test all configuration changes in staging before production.
+* Keep web servers updated to stable versions.
+* Combine caching, compression, and CDN for optimal performance.
+* Enable health checks for upstream backend servers.
+
+---
+---

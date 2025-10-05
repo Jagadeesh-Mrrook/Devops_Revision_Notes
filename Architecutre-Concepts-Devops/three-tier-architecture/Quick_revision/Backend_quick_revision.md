@@ -1,396 +1,243 @@
-# Application Server / Backend Layer - Quick Revision
+# AWS & Web Server Quick Revision Notes
 
-## Concept / What
-
-* Backend server running **business logic**
-* Generates **dynamic content**, connects **DB and third-party APIs**, exposes **REST APIs**
-* Supports **microservices** in multiple languages (Java, Node.js, Python)
-
-## Purpose / Use Case
-
-* Bridges **frontend and data layer**
-* Handles **scalable, stateless business logic**
-* Integrates with **third-party services** (payment, messaging, APIs)
-
-## How it Works / Steps
-
-1. Client sends REST API request → App Server → DB / 3rd-party API → Response
-2. **Security**: JWT for stateless auth, OAuth for delegated access, Sticky Sessions optional
-3. **Scaling**: ALB/NLB + Auto Scaling, any pod can validate JWT
-
-## Common Issues
-
-* 500 errors, high latency, session issues, scaling failures, security misconfigurations
-
-## Fixes / Tips
-
-* Monitor logs, metrics, alerts
-* Auto-scaling, retries, circuit breakers
-* Rotate JWT secrets, secure OAuth keys
-* Use HTTPS, WAF, IAM, rate-limiting
-* Prefer stateless JWT over sticky sessions for scalability
-
-## AWS/K8s Example
-
-* Backend pods behind ALB Ingress, HPA for scaling
-* JWT signed with secret from AWS Secrets Manager
-* Third-party API calls with retries
-* Monitoring via CloudWatch / Prometheus / Grafana
-
----
-
-# REST API Quick Revision Notes - DevOps
-
-## Concept
-
-* API enables software components to communicate.
-* REST APIs: HTTP-based, stateless, resource-oriented between frontend & backend.
-* Backend accesses DB internally; frontend uses REST endpoints.
-
-## Purpose / Use Case
-
-* Frontend ↔ backend communication.
-* Stateless → supports scaling & microservices.
-* Resource-oriented URLs (`/users/123`) → clean, cacheable, intuitive.
-
-## Key Points / Flow
-
-```
-Client → API Gateway/ALB → Backend Pod → DB/3rd-party → Response
-```
-
-* Authenticate (JWT/OAuth)
-* Validate request
-* Call business logic / microservice
-* Return JSON/XML response
-
-## API Types
-
-* REST: lightweight, stateless, JSON/XML, preferred for frontend-backend.
-* SOAP: XML, enterprise apps.
-* GraphQL: flexible queries, single endpoint.
-* gRPC/Thrift: fast internal microservices communication.
-
-## Resource-Oriented URLs
-
-* `/users/123` instead of `/getUser?id=123`
-* HTTP verbs define action (GET/PUT/DELETE)
-* Nested resources: `/users/123/orders`
-* Benefits: scalable, cacheable, maintainable.
-
-## Common Issues
-
-* CORS errors, wrong HTTP methods, invalid headers
-* Versioning inconsistencies
-* Misconfigured load balancers / gateways
-
-## Troubleshooting / Fixes
-
-* Swagger/OpenAPI docs
-* Correct CORS headers
-* Validate payloads, handle errors consistently
-* Monitor latency, errors via CloudWatch/Prometheus
-* Apply WAF and rate limiting
-
-## Best Practices (DevOps)
-
-* Use resource-oriented URLs
-* Stateless APIs → any pod can serve requests
-* JWT/OAuth for auth
-* Monitor availability & latency
-* Keep backend → DB internal; frontend uses API
-
-## Cloud Example
-
-* EKS pods behind ALB
-* REST endpoints via API Gateway
-* JWT/OAuth for auth
-* Backend → RDS/DynamoDB internally
-* CloudWatch for API monitoring
-
-
----
-
-# Dynamic Content Generation - Quick Revision Notes (DevOps)
-
-## Concept
-
-* Backend generates **dynamic content** on-the-fly based on user requests.
-* Content fetched from **DB or 3rd-party API**, processed via **business logic**, sent as JSON/XML.
-* Frontend parses JSON and renders on UI.
-
-## Key Flow
-
-```
-Client → ALB/API Gateway → Backend Pod → DB/3rd-party → JSON Response → Frontend UI
-```
-
-* Steps: Authenticate → Fetch Data → Apply Logic → Send Response
-
-## Techniques
-
-* **Server-Side Rendering (SSR)**: HTML generated server-side.
-* **API-driven**: JSON response rendered by frontend.
-* **Template Engines**: EJS, Thymeleaf, Handlebars.
-
-## Common Issues
-
-* High latency, backend overload
-* Wrong user-specific data, session/auth errors
-* Template or rendering errors
-
-## Troubleshooting / Fixes
-
-* Optimize DB queries & caching
-* Load balancing and auto-scaling
-* Validate data before rendering
-* Use CDNs / edge caching for partial caching
-* Monitor performance (CloudWatch/Prometheus)
-
-## Best Practices (DevOps)
-
-* Separate business logic & presentation
-* Cache frequently accessed data
-* API-driven content for microservices
-* Secure user-specific data (JWT/OAuth)
-* Monitor backend performance
-
-## Cloud Example
-
-* EKS/EC2 pods serve dynamic content
-* ALB distributes requests
-* Data from RDS/DynamoDB or 3rd-party
-* Partial caching via ElastiCache
-* Frontend consumes JSON and renders UI
-* CloudWatch monitors latency and errors
-
----
-
-# Backend Connection with Frontend (API Endpoints) - Quick Revision Notes
-
-## Concept / What
-
-* Backend exposes REST APIs; frontend consumes them.
-* Requests go through **ALB** to backend instances/pods.
-* Frontend does not expose REST APIs externally.
-
-## Flow
-
-```
-Frontend → ALB → Backend port → REST API → DB/3rd-party → ALB → Frontend UI
-```
-
-## Key Points
-
-* Port: network-level entry to backend service
-* REST API: application-level request handler
-* ALB: routes requests, SSL termination, WAF, health checks
-* Stateless endpoints enable scaling
-* JWT/OAuth for authentication
-* API versioning prevents breaking frontend
-
-## Common Issues
-
-* 401 Unauthorized (token issues)
-* 400 Bad Request (missing headers/payload)
-* 5xx errors if backend overloaded
-* CORS errors (cross-domain requests)
-* Misconfigured ALB or unhealthy targets
-
-## DevOps Tips
-
-* Monitor API performance, errors, and traffic
-* Apply rate limiting / WAF
-* Use path-based routing and health checks
-* Keep endpoints stateless and secure
-
----
-
-# Load Balancing (ALB, NLB) and Session Handling - Quick Revision Notes
-
-## Concept / What
-
-* Load balancers distribute traffic across backend servers/pods.
-* Session handling maintains user state across requests.
-* Supports scalable, highly available applications.
-
-## Key Components
-
-* **ALB (Layer 7)**: HTTP/HTTPS, path-based routing, WAF, SSL termination.
-* **NLB (Layer 4)**: TCP/UDP, ultra-low latency, high throughput.
-
-## Session Management Types
-
-1. **Sticky Sessions**: ALB binds user to one pod via cookie (AWSALB).
-2. **Centralized Store**: Redis/ElastiCache stores session → any pod can access.
-3. **JWT / Stateless**: App issues token → client stores → any pod validates.
-
-## Flow Example (JWT)
-
-```
-User → ALB → Backend pod → Auth → JWT issued → Client stores JWT
-→ Next requests carry JWT → ALB forwards → any pod validates JWT → Response
-```
-
-## Common Issues
-
-* Sticky session server failure → session lost.
-* Overloaded pod if many users stick.
-* Redis bottleneck if unscaled.
-* JWT secret leak → security risk.
-* Misconfigured ALB target groups.
-
-## Best Practices
-
-* Prefer JWT/stateless sessions for cloud-native apps.
-* Use centralized sessions (Redis) if needed.
-* Enable WAF + throttling.
-* Keep endpoints stateless.
-* Store JWT secrets securely in Secrets Manager/KMS.
-* Monitor ALB, pods, session store with CloudWatch.
-
-## DevOps Role
-
-* Configure ALB stickiness.
-* Deploy/manage Redis.
-* Manage JWT secrets.
-* Ensure scaling policies and monitoring are effective.
-
----
-
-# Auto Scaling of Backend Pods / EC2 Instances - Quick Revision Notes
-
-## Concept / What
-
-* Auto Scaling adjusts EC2 instances or Kubernetes pods automatically based on demand.
-* Ensures high availability, performance, and cost efficiency.
-
-## Key Components
-
-* **EC2**: Auto Scaling Group (ASG) + Launch Template.
-* **Kubernetes**: HPA (Horizontal Pod Autoscaler), VPA (Vertical Pod Autoscaler), Cluster Autoscaler.
-* **Launch Template** preferred over Launch Configuration (supports versioning, overrides).
-
-## Scaling Triggers
-
-* Target tracking (CPU/memory utilization)
-* Step scaling (add/remove instances based on thresholds)
-* Scheduled scaling (time-based)
-
-## Common Issues
-
-* Over-scaling → high cost
-* Under-scaling → latency / 5xx errors
-* Cooldown period misconfigurations
-* Cold start latency
-
-## Best Practices
-
-* Set min/max limits to control cost.
-* Use target-tracking policies.
-* Combine HPA + VPA + Cluster Autoscaler in K8s.
-* Ensure ALB health checks are accurate.
-* Monitor metrics and alerts.
-* Schedule scaling for predictable spikes.
-
-## DevOps Role
-
-* Create/manage Launch Templates.
-* Define scaling policies and triggers.
-* Deploy and monitor HPA/VPA/Cluster Autoscaler.
-* Test scaling in staging before production.
-* Optimize cost and performance continuously.
-
----
-
-# Security: WAF, IAM Roles, API Throttling - Quick Revision Notes
-
-## Concept / What
-
-* Security protects backend servers from unauthorized access, attacks, and misuse.
-* Focus: Access control, request filtering, traffic management.
-
-## Key Components
-
-* **AWS Shield** → network/transport-level DDoS protection (Layer 3/4) for ALB & NLB.
-* **AWS WAF** → application-level firewall (Layer 7) for ALB, protects against SQLi, XSS, malicious bots, HTTP floods.
-* **IAM Roles** → access control for EC2, pods, Lambda without hardcoding credentials.
-* **API Throttling** → limits requests per client per second to prevent abuse.
-
-## Flow
-
-```
-User → AWS Shield → WAF → ALB → Backend
-```
+## NLB & WAF/Shield
 
 * NLB uses **Shield only**, WAF not applicable.
 
-## Common Issues
+### Common Issues
 
-* WAF misconfigured → blocks legit traffic.
-* IAM missing permissions → 403 errors.
-* API throttling too strict → 429 errors.
-* Large DDoS → need Shield.
+* WAF misconfigured → blocks legit traffic
+* IAM missing permissions → 403 errors
+* API throttling too strict → 429 errors
+* Large DDoS → need Shield
 
-## Best Practices
+### Best Practices
 
-* Use least privilege IAM roles.
-* Apply WAF managed rulesets.
-* Implement API throttling.
-* Monitor with CloudWatch/CloudTrail.
-* Test in staging.
-* Shield + WAF together for ALB.
-* Shield only for NLB.
+* Use least privilege IAM roles
+* Apply WAF managed rulesets
+* Implement API throttling
+* Monitor with CloudWatch/CloudTrail
+* Test in staging
+* Shield + WAF together for ALB
+* Shield only for NLB
 
-## Common Attacks (One-line)
+### Common Attacks (One-line)
 
-* **DDoS** → server overload.
-* **SQL Injection** → malicious DB queries.
-* **XSS** → steal user sessions.
-* **Malicious Bots** → automated abuse.
+* **DDoS** → server overload
+* **SQL Injection** → malicious DB queries
+* **XSS** → steal user sessions
+* **Malicious Bots** → automated abuse
 
-## DevOps Role
+### DevOps Role
 
-* Configure Shield & WAF.
-* Assign/manage IAM roles.
-* Implement API throttling.
-* Monitor logs & metrics.
-* Ensure proper protection for ALB/NLB.
+* Configure Shield & WAF
+* Assign/manage IAM roles
+* Implement API throttling
+* Monitor logs & metrics
+* Ensure proper protection for ALB/NLB
 
 ---
 
-# Application Server: Common Issues & Troubleshooting - Quick Revision Notes
-
-## Key Issues & Fixes
+## Application Server: Common Issues & Troubleshooting
 
 ### 500 Internal Server Errors
 
-* **Cause:** Code bugs, DB failures, env misconfig, low memory/CPU.
-* **Fix:** Check logs, validate DB, review code, scale resources.
+* **Cause:** Code bugs, DB failures, env misconfig, low memory/CPU
+* **Fix:** Check logs, validate DB, review code, scale resources
 
 ### High Latency / Slow Responses
 
-* **Cause:** Heavy DB queries, blocking APIs, resource/network limits.
-* **Fix:** Profile queries, caching (Redis), async calls, scale horizontally, monitor metrics.
+* **Cause:** Heavy DB queries, blocking APIs, resource/network limits
+* **Fix:** Profile queries, caching (Redis), async calls, scale horizontally, monitor metrics
 
 ### Scaling Failures
 
-* **Cause:** Misconfigured Auto Scaling/HPA, dependency bottlenecks.
-* **Fix:** Validate scaling triggers, check HPA logs, ensure stateless backend, optimize thresholds.
+* **Cause:** Misconfigured Auto Scaling/HPA, dependency bottlenecks
+* **Fix:** Validate scaling triggers, check HPA logs, ensure stateless backend, optimize thresholds
 
 ### Other Common Issues
 
-* Auth/Authorization errors (JWT, IAM roles).
-* Connection timeouts (DB or external services).
-* Memory leaks/crashes.
+* Auth/Authorization errors (JWT, IAM roles)
+* Connection timeouts (DB or external services)
+* Memory leaks/crashes
 
-## Best Practices
+### Best Practices
 
-* Centralize logs and metrics.
-* Implement health checks.
-* Keep backend stateless.
-* Monitor resources and app performance.
-* Automate alerts for errors/spikes.
-* Use caching & async calls.
-* Validate scaling configurations regularly.
+* Centralize logs and metrics
+* Implement health checks
+* Keep backend stateless
+* Monitor resources and app performance
+* Automate alerts for errors/spikes
+* Use caching & async calls
+* Validate scaling configurations regularly
 
+---
+
+## 2.2 Web Server - Quick Revision Notes
+
+### Web Server
+
+* **Definition:** Software/hardware serving content via HTTP/HTTPS
+* **Purpose:** Deliver static/dynamic content, offload backend, enable HTTPS, act as reverse proxy
+* **Flow:** Client → Web Server → (Static: direct / Dynamic: backend) → Response
+* **Best Practices:** HTTPS, gzip/brotli, CDN, dedicated static directory
+
+### Static Content Serving (Nginx, Apache)
+
+* **Definition:** Serve HTML, CSS, JS, images directly
+* **Purpose:** Fast delivery, reduce backend load, scalable
+* **Examples:** Nginx (`/var/www/html`), Apache (`DocumentRoot`), AWS S3 + CloudFront
+* **Common Issues:** 403/404, cache issues, MIME mismatch
+* **Fixes:** Correct permissions, clear cache, correct MIME types
+* **Best Practices:** CDN, cache-busting, HTTPS, compression
+* **Responsibilities:**
+
+  * **DevOps:** Install/configure server, SSL/TLS, caching, reverse proxy
+  * **Developer:** Provide build artifacts, recommend caching or headers
+
+### Reverse Proxy Configuration to Backend
+
+* **Definition:** Server (Nginx/Apache) between clients and backend, forwards requests, hides backend IPs
+* **Purpose:** Load balancing, security, SSL termination, caching, centralized logging
+* **Flow:** Client → Reverse Proxy → Backend → Reverse Proxy → Client
+* **Nginx Example:**
+
+```nginx
+upstream backend_servers {
+  server 10.0.0.1:3000;
+  server 10.0.0.2:3000;
+}
+server {
+  listen 80;
+  server_name example.com;
+  location / {
+    proxy_pass http://backend_servers;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+}
+```
+
+* **Common Issues:** 502/504 errors, lost client IP, SSL issues, backend unreachable
+* **Fixes:** Check logs, verify backend health, set `X-Forwarded-For`, validate SSL
+* **Best Practices:** Health checks, sticky sessions if needed, SSL offloading, caching, monitoring
+* **Responsibilities:**
+
+  * **DevOps:** Install, maintain, implement config, ensure SSL/connectivity/performance
+  * **Developer:** Provide routing rules/backend mapping
+
+---
+
+## 2.2 Web Server - SSL/TLS Quick Revision Notes
+
+### TLS Encryption
+
+• Encrypts traffic between client and server for confidentiality, integrity, authentication.
+• Symmetric encryption for data transfer, asymmetric for key exchange.
+
+### TLS Handshake
+
+• Establishes secure connection and negotiates encryption.
+• Steps: Client Hello → Server Hello → Server Certificate → Key Exchange → Handshake Complete.
+• Encrypted communication begins after handshake.
+
+### TLS/SSL Termination
+
+• Web server or reverse proxy decrypts HTTPS traffic.
+• End-to-End TLS: traffic remains encrypted to backend.
+• Flow:
+
+* Normal: Client → Web Server → HTTP → Backend
+* End-to-End: Client → Web Server → HTTPS → Backend
+  • Nginx config example included for end-to-end TLS.
+
+### Certificates / CA
+
+• CA issues digital certificates; authenticate server identity.
+• Stored on server directories (`/etc/ssl/certs/`, `/etc/ssl/private/`) or in AWS ACM/Secrets Manager.
+• Used during TLS handshake for authentication.
+• Best Practices: TLS 1.2/1.3, strong ciphers, secure storage, automated renewals.
+
+### Common Issues & Fixes
+
+• Handshake failure → update TLS versions/ciphers
+• Expired/invalid certificate → renew/replace
+• Wrong path → correct server config
+• Weak cipher → disable
+
+### DevOps Role
+
+• Install/configure server/load balancer for TLS termination
+• Deploy/manage certificates
+• Monitor handshake logs
+• Ensure backend connectivity and optional end-to-end TLS
+
+---
+
+## 2.2 Web Server – Caching, Compression, and CDN – Quick Revision Notes
+
+### **Caching (Web Server & CDN)**
+
+* **Definition:** Temporarily store frequently accessed content to reduce backend load and speed up delivery.
+* **Purpose:** Fast responses, reduced backend load, global access via CDN.
+* **Flow:** Client → Cache (Web Server/CDN) → Backend (if cache miss) → Client.
+* **Common Issues:** Stale cache, misconfigured TTL, CDN cache miss.
+* **Fixes:** Invalidate cache, adjust TTL, monitor cache hit ratio.
+* **Best Practices:** Cache static content, selective dynamic caching, monitor and tune.
+
+### **Compression**
+
+* **Definition:** Reduce size of responses (HTML, CSS, JS) before sending.
+* **Purpose:** Faster delivery, lower bandwidth, better UX.
+* **How:** Enable gzip/brotli in NGINX/Apache, compress text-based content.
+* **Common Issues:** Compression not applied, wrong MIME type.
+* **Fixes:** Enable modules, verify MIME, test with curl/dev tools.
+* **Best Practices:** Always compress text, combine with caching, monitor CPU usage.
+
+### **CDN Integration**
+
+* **Definition:** Global servers caching content near users.
+* **Purpose:** Reduce latency, offload origin, improve availability.
+* **How:** Configure origin, define cache behavior, serve cached content, fetch on miss.
+* **Common Issues:** Incorrect cache policy, misconfigured origin, TTL too long.
+* **Fixes:** Invalidate cache, adjust TTL, check origin availability.
+* **Best Practices:** Cache static assets, selective dynamic caching, enable compression, monitor hit/miss ratio.
+
+### **DevOps vs Developer Responsibilities**
+
+* **DevOps:** Install/configure server, enable caching/compression, configure CDN, monitor performance.
+* **Developer:** Provide static content/build artifacts, recommend caching paths/headers/TTL.
+
+
+---
+
+## 2.2 Web Server – Common Issues & Troubleshooting – Quick Revision Notes
+
+### **Common Errors**
+
+* **4XX Errors:** Client-side issues like wrong URLs, missing files, permissions → 403/404.
+* **5XX Errors:** Server-side issues like backend down, reverse proxy misconfig → 500/502/504.
+* **TLS/SSL Errors:** Expired/mismatched certificates, unsupported TLS → handshake failures, HTTPS errors.
+* **Performance/Latency:** High CPU/memory, database slowness, no caching → slow responses.
+* **Config Syntax Errors:** Typos/misconfig → server fails reload.
+
+### **Troubleshooting / Fixes**
+
+* Check server logs (`/var/log/nginx/error.log`, `/var/log/apache2/error.log`).
+* Verify backend health and connectivity.
+* Validate TLS/SSL certificates (openssl s_client, correct permissions, renew if expired).
+* Correct file permissions and root paths (directories 755, files 644).
+* Enable caching/compression, adjust workers, use CDN for performance.
+* Test configuration syntax before reload (`nginx -t`, `apachectl configtest`).
+
+### **Best Practices**
+
+* Monitor logs and metrics regularly.
+* Test configs in staging first.
+* Keep servers updated.
+* Use caching, compression
+
+
+---
+---

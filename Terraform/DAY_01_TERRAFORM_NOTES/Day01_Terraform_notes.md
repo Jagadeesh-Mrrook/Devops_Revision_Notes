@@ -147,7 +147,7 @@
 
 ## 1. terraform init
 ### Concept
-- Initializes a Terraform project and downloads required providers and modules.
+Initializes a Terraform project, downloads the required provider plugins, fetches module configuration files into `.terraform/modules`, and configures the backend if specified.
 ### Purpose / Use Case
 - Required before running plan or apply; sets up backend and providers.
 ### Syntax
@@ -186,9 +186,13 @@
 - Applies changes to achieve the desired infrastructure state.
 ### Purpose / Use Case
 - Provision or update resources; can use saved plan for safety.
-### Syntax
-- terraform apply
-- Optional: terraform apply planfile
+* **Syntax:**
+
+  * `terraform apply`
+  * Optional: `terraform apply planfile`
+  * Optional: `terraform apply -target=RESOURCE` (to apply specific resources only)
+
+
 ### Common Issues
 - Authentication failures
 - Resource conflicts due to manual changes
@@ -255,9 +259,25 @@
 - Fix broken or misconfigured resources without manual deletion.
 - Useful in CI/CD pipelines for automated resource recovery.
 - Example: Replace failing VM, database, or load balancer.
+# Terraform Taint and State File Behavior
+
+* `terraform taint` marks a resource for replacement in the state; it is not immediately removed.
+* On `terraform apply`, the old resource is destroyed and a new one is created using the current config.
+* The state file is updated after apply with the new resource ID and attributes.
+* The state always reflects the current infrastructure; it is never deleted.
+
 ### Syntax
 - terraform taint <resource_type.resource_name>
 - Example: terraform taint aws_instance.web_server
+
+### Terraform Untaint
+
+* **Concept:** Marks a previously tainted resource as untainted, so Terraform will no longer destroy and recreate it on the next apply.
+* **Syntax:** terraform untaint <resource_type.resource_name>
+* **Example:** terraform untaint aws_instance.web_server
+* **Use Case:** If a resource was tainted by mistake, you can untaint it to avoid unnecessary replacement.
+
+
 ### Common Issues / Errors
 - Resource not found → wrong name/type
 - State mismatch → resource deleted manually

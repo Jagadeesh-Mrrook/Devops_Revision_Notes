@@ -117,6 +117,115 @@ Git integration in Jenkins allows Jenkins to pull code from Git repositories for
 * Keep repository URLs consistent and versioned with Jenkinsfile.
 * Combine HTTPS/SSH with proper credential management to avoid failures.
 ----
+# 🌩️ Jenkins + AWS Secrets Manager + GitHub SSH Integration Notes
+
+## Overview
+
+These notes explain how to use AWS Secrets Manager to store SSH private keys and use them securely in Jenkins pipelines for GitHub checkout.
+
+---
+
+## 🔹 Plugins Required
+
+* **AWS Secrets Manager Credentials Plugin**
+
+  * Stores AWS Secrets Manager secrets as Jenkins credentials.
+* **AWS Secrets Manager Credentials Provider Plugin**
+
+  * Fetches secrets dynamically and provides them to Jenkins plugins/pipeline steps.
+
+## 🔹 Prerequisites
+
+1. **AWS Secrets Manager**
+
+   * Secret Name: `github-ssh-key`
+   * Value: Private SSH key (`id_rsa`) contents
+2. **Jenkins Plugins Installed** (listed above)
+3. **EC2 Jenkins Agent IAM Role**
+
+   * Permissions: `secretsmanager:GetSecretValue`
+4. **Jenkins Credential**
+
+   * Type: “Secret from AWS Secrets Manager”
+   * Secret ID: `github-ssh-key`
+   * Credential ID in Jenkins: `github-ssh-key`
+
+## 🔹 Pipeline Usage
+
+### Example: Checkout Private GitHub Repo
+
+```groovy
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout Private GitHub Repo') {
+            steps {
+                // Use AWS Secrets Manager credential
+                withAWS(credentials: 'aws-credentials-id') {
+
+                    // Map secret to SSH key credential
+                    withCredentials([sshUserPrivateKey(
+                        credentialsId: 'github-ssh-key',
+                        keyFileVariable: 'SSH_KEY'
+                    )]) {
+                        sh '''
+                        # Load key into ssh-agent
+                        eval "$(ssh-agent -s)"
+                        ssh-add $SSH_KEY
+
+                        # Clone private GitHub repo
+                        git clone git@github.com:myorg/myrepo.git
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### 🔹 Key Points
+
+* `withAWS(credentials: 'aws-credentials-id')` → Authenticates Jenkins to fetch secrets using IAM role or credentials.
+* `withCredentials([sshUserPrivateKey(...)])` → Exposes private key temporarily as `$SSH_KEY`.
+* `ssh-agent` + `ssh-add` → Loads private key into memory for Git SSH authentication.
+* Secret exists **only during the pipeline stage** and is removed automatically afterward.
+
+### 🔹 Security Advantages
+
+* No permanent storage of private keys on Jenkins nodes.
+* Secrets are **never exposed in logs**.
+* Supports **automatic IAM role-based access**, avoiding static AWS credentials.
+* Reduces risk of human error and accidental leakage.
+
+## 🔹 Snippet Generator
+
+* Use Jenkins **Pipeline Syntax / Snippet Generator** for `withAWS` and `withCredentials` steps.
+* Helps avoid syntax errors and remember variable mappings.
+* Generates ready-to-use Groovy snippets for pipelines.
+
+---
+
+### 🔹 Workflow Summary
+
+```
+AWS Secrets Manager (private key stored)
+        ↓ withAWS
+Jenkins fetches secret securely
+        ↓ withCredentials
+Private key exposed as environment variable ($SSH_KEY)
+        ↓ ssh-agent
+Used for GitHub checkout in pipeline
+        ↓ end of stage
+Key removed automatically
+```
+
+> **Bottom Line:** Plugins handle secret fetching, temporary exposure, and cleanup securely. AWS CLI approach is flexible but requires careful handling of environment variables and temporary files.
+
+---
+---
+
 
 ### Jenkins GitHub/GitLab/Bitbucket Webhooks - Detailed Notes
 

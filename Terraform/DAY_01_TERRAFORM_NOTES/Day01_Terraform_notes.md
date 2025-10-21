@@ -288,8 +288,71 @@ Initializes a Terraform project, downloads the required provider plugins, fetche
 - Use sparingly; only taint resources that need recreation
 - Run `terraform plan` before apply
 - Avoid critical production resources without backups
+---
+
+# 7.1 terraform apply -replace
+
+## Concept
+
+Forces Terraform to destroy and recreate a specific resource **in the same apply run**, without marking it as tainted.
+
+## Purpose / Use Case
+
+Replace broken or misconfigured resources in a single step.
+Safer and cleaner alternative to `terraform taint` in automation and CI/CD pipelines.
+Useful when you want to avoid a separate taint step and ensure state consistency.
+
+## Terraform Apply -Replace and State File Behavior
+
+* Does **not mark** the resource as tainted.
+* Terraform generates a plan showing the resource will be **destroyed and recreated**.
+* During apply:
+
+  1. Old resource is destroyed in the cloud.
+  2. New resource is created according to the configuration.
+* The state file is updated **atomically**: old resource is removed, new resource ID and attributes are added.
+* After apply, the state fully reflects the current infrastructure; no tainted flags remain.
+
+## Syntax
+
+```bash
+terraform apply -replace="<resource_type.resource_name>"
+```
+
+## Example
+
+```bash
+terraform apply -replace="aws_instance.web_server"
+```
+
+## Key Differences from `terraform taint`
+
+* Single-step operation; no separate `taint` + `apply`.
+* State file is updated automatically during apply.
+* Does not leave a “tainted” mark in the state.
+* Recommended approach in Terraform ≥0.15.
+
+## Common Issues / Errors
+
+* Resource not found → wrong name/type
+* Dependencies may require additional replacements
+
+## Troubleshooting / Fixes
+
+* Use `terraform state list` to verify resource names
+* Check plan output to see what will be replaced
+* Ensure configuration matches desired resource attributes
+
+## Best Practices / Tips
+
+* Use for replacing resources safely in automation
+* Run `terraform plan -replace="..."` first to preview changes
+* Avoid replacing critical production resources without backups
 
 ---
+---
+
+
 
 ## 8. terraform import
 ### Concept

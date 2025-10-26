@@ -124,6 +124,125 @@ Jenkins provides a **Credential Store** to securely save sensitive data (usernam
 * **Audit & cleanup**: remove unused credentials; review usage periodically.
 * **Avoid printing** commands containing secrets; prefer config files (secret file kind) when tools support it.
 
+# 🔐 Handling AWS Secrets Manager in Jenkins (Declarative Pipeline)
+
+There are **two main approaches** to access AWS Secrets Manager data in Jenkins:
+
+---
+
+## 🧹 1. Plugin-Based Approach (Recommended)
+
+This is the most secure and maintainable way since Jenkins integrates directly with AWS Secrets Manager via plugins.
+
+### ✅ Required AWS Plugins
+
+1. **AWS Credentials Plugin**
+
+   * Provides the base capability for Jenkins to authenticate with AWS (using IAM user/role credentials).
+   * Required by other AWS plugins for API communication.
+   * [Plugin page:](https://plugins.jenkins.io/aws-credentials/) `aws-credentials`
+
+2. **AWS Secrets Manager Credentials Provider Plugin**
+
+   * Automatically fetches credentials from AWS Secrets Manager and exposes them as Jenkins credentials.
+   * Secrets appear under Jenkins → *Manage Credentials* like native Jenkins credentials.
+   * [Plugin page:](https://plugins.jenkins.io/aws-secrets-manager-credentials-provider/) `aws-secrets-manager-credentials-provider`
+
+3. *(Optional)* **AWS Secrets Manager SecretSource Plugin**
+
+   * Adds Secret interpolation support using `${}` syntax from AWS Secrets Manager.
+   * Usually needed when you want dynamic environment variable substitution in Jenkins configuration files.
+   * [Plugin page:](https://plugins.jenkins.io/aws-secrets-manager-secret-source/) `aws-secrets-manager-secret-source`
+
+### ⚙️ Example Declarative Pipeline (Plugin-based)
+
+```groovy
+pipeline {
+    agent any
+    environment {
+        // The ID refers to a secret in AWS Secrets Manager
+        MY_SECRET = credentials('aws-secret-id')
+    }
+    stages {
+        stage('Use AWS Secret') {
+            steps {
+                echo "Using secret from AWS Secrets Manager..."
+                sh '''
+                    echo "Secret value is: $MY_SECRET"
+                '''
+            }
+        }
+    }
+}
+```
+
+### 🧐 How It Works
+
+* Jenkins uses the **AWS Credentials Plugin** to authenticate with AWS (through IAM role or access keys).
+* The **AWS Secrets Manager Credentials Provider Plugin** retrieves secrets from AWS Secrets Manager and registers them as Jenkins credentials.
+* The pipeline can then access these via the standard `credentials()` helper.
+* All secret values remain **encrypted at rest using AES-256**, as handled by Jenkins’ internal credential encryption.
+
+### 🔒 Security Notes
+
+* The secrets never appear in plain text in Jenkins logs (they are masked).
+* Jenkins stores only a reference to the AWS secret; it doesn’t cache them persistently.
+* Recommended to use **IAM Role for Service Account (IRSA)** or **instance role** instead of access keys for Jenkins EC2 agents.
+
+---
+
+## 💻 2. CLI-Based Approach
+
+If you don’t want to install plugins or need finer control, you can use the **AWS CLI** within a Jenkins pipeline to fetch secrets dynamically.
+
+### Example Declarative Pipeline (CLI-based)
+
+```groovy
+pipeline {
+    agent any
+    environment {
+        AWS_REGION = 'us-east-1'
+    }
+    stages {
+        stage('Fetch Secret via CLI') {
+            steps {
+                script {
+                    def secretValue = sh(
+                        script: "aws secretsmanager get-secret-value --secret-id my-secret --query SecretString --output text --region ${AWS_REGION}",
+                        returnStdout: true
+                    ).trim()
+                    echo "Secret fetched successfully"
+                    // Use secretValue in further steps
+                }
+            }
+        }
+    }
+}
+```
+
+### ⚙️ How It Works
+
+* Jenkins uses the **AWS CLI** (pre-installed or through a tool step).
+* The CLI fetches the secret from AWS Secrets Manager using the IAM credentials configured on the node.
+* You can parse and assign the secret to a variable for later use in the pipeline.
+
+### ⚠️ Drawbacks
+
+* The secret briefly exists in pipeline memory (less secure).
+* Requires proper CLI installation and IAM permissions on the Jenkins agent.
+* Not masked automatically unless you handle it carefully.
+
+---
+
+## 📞 Plugin Version & Compatibility Summary
+
+| Plugin                                             | Purpose                                          | Typical Latest Version | Jenkins Core Required |
+| -------------------------------------------------- | ------------------------------------------------ | ---------------------- | --------------------- |
+| **aws-credentials**                                | Base authentication support for AWS              | 1.38+                  | 2.361.4+              |
+| **aws-secrets-manager-credentials-provider**       | Integrate Secrets Manager as Jenkins credentials | 1.10+                  | 2.361.4+              |
+| **aws-secrets-manager-secret-source** *(optional)* | Interpolate secrets dynamically                  | 1.3+                   | 2.361.4+              |
+
+---
 ---
 
 

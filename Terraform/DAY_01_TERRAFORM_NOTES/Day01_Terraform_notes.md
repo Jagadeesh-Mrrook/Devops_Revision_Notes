@@ -146,21 +146,120 @@
 # Terraform CLI Commands - Detailed Notes
 
 ## 1. terraform init
-### Concept
-Initializes a Terraform project, downloads the required provider plugins, fetches module configuration files into `.terraform/modules`, and configures the backend if specified.
-### Purpose / Use Case
-- Required before running plan or apply; sets up backend and providers.
-### Syntax
-- terraform init
-- Optional flags:
-  - `-backend-config="key=value"` → customize backend
-  - `-upgrade` → update provider plugins
-### Common Issues
-- Missing provider plugin
-- Backend misconfiguration
-### Troubleshooting
-- Check provider block and backend config
-- Use `terraform init -upgrade` to refresh plugins
+
+### **Concept**
+
+Initializes a Terraform project by:
+
+* Downloading required provider plugins
+* Fetching module configuration files into `.terraform/modules`
+* Configuring the backend (local or remote like S3 + DynamoDB)
+
+---
+
+### **Purpose / Use Case**
+
+* Must be run **before** `plan` or `apply`
+* Sets up **backend**, **providers**, and **modules** for the workspace
+* Used when switching backend configurations or upgrading providers
+
+---
+
+### **Syntax**
+
+```bash
+terraform init [options]
+```
+
+---
+
+## Terraform Init - Real-World Options
+
+### 1. `-backend-config="key=value"`
+
+* **Description:** Pass backend configuration values directly via CLI.
+* **Use Case:** Override or supply specific backend parameters (e.g., bucket name, region) dynamically.
+* **Example:**
+
+  ```bash
+  terraform init -backend-config="bucket=my-tf-state" -backend-config="region=ap-south-1"
+  ```
+
+### 2. `-backend-config=<FILE>`
+
+* **Description:** Load backend settings from a separate configuration file.
+* **Use Case:** Keep backend details (like S3 bucket, key, region) organized and versioned separately.
+* **Example:**
+
+  ```bash
+  terraform init -backend-config=backend.hcl
+  ```
+
+### 3. `-reconfigure`
+
+* **Description:** Reinitialize the backend, ignoring any saved configuration.
+* **Use Case:** Used when switching environments or changing backend type (e.g., from local to S3).
+* **Example:**
+
+  ```bash
+  terraform init -backend-config=env/qa/backend.hcl -reconfigure
+  ```
+
+### 4. `-migrate-state`
+
+* **Description:** Moves (migrates) the current Terraform state to a new backend.
+* **Use Case:** When changing backend configuration (e.g., migrating state from one S3 bucket to another).
+* **Example:**
+
+  ```bash
+  terraform init -backend-config=new-backend.hcl -migrate-state
+  ```
+
+### 5. `-upgrade`
+
+* **Description:** Upgrade all Terraform provider and module versions to the latest allowed by configuration.
+* **Use Case:** Ensure provider plugins are up-to-date, especially after version changes in configuration.
+* **Example:**
+
+  ```bash
+  terraform init -upgrade
+  ```
+
+### 6. `-input=false`
+
+* **Description:** Disables interactive input prompts (used in automation pipelines).
+* **Use Case:** Prevent manual input during automated Terraform initialization.
+* **Example:**
+
+  ```bash
+  terraform init -input=false
+  ```
+
+### 7. `-lockfile=readonly`
+
+* **Description:** Prevents modification of the `.terraform.lock.hcl` file.
+* **Use Case:** Used in production pipelines where dependency versions must remain consistent.
+* **Example:**
+
+  ```bash
+  terraform init -lockfile=readonly
+  ```
+
+---
+
+### **Common Issues**
+
+* Provider plugin missing or outdated
+* Backend misconfiguration (incorrect bucket/key/region)
+* State migration conflicts
+
+---
+
+### **Troubleshooting**
+
+* Verify backend settings in `.tf` or `.hcl` files
+* Use `terraform init -reconfigure` when backend changes
+* Run `terraform init -upgrade` to refresh plugins and modules
 
 ---
 
@@ -172,6 +271,85 @@ Initializes a Terraform project, downloads the required provider plugins, fetche
 ### Syntax
 - terraform plan
 - Optional: `-out=planfile` → save plan for later apply
+## Terraform Plan - Commonly Used Real-world Options
+## Terraform Plan - Real-World Options
+
+### 1. `-out=<FILE>`
+
+* **Description:** Saves the generated execution plan to a file.
+* **Use Case:** To review or apply the exact same plan later (ensures no drift between plan and apply).
+* **Example:**
+
+  ```bash
+  terraform plan -out=plan.tfplan
+  ```
+
+### 2. `-var` and `-var-file`
+
+* **Description:** Pass variables directly or from a `.tfvars` file.
+* **Use Case:** Useful for environment-based variable management (dev, qa, prod).
+* **Examples:**
+
+  ```bash
+  terraform plan -var="instance_type=t3.micro"
+  terraform plan -var-file=qa.tfvars
+  ```
+
+### 3. `-lock` and `-lock-timeout`
+
+* **Description:** Controls Terraform's state locking behavior.
+* **Use Case:** Prevents concurrent modifications to the state file during planning.
+* **Examples:**
+
+  ```bash
+  terraform plan -lock=false
+  terraform plan -lock-timeout=5m
+  ```
+
+  > If Terraform can’t acquire the state lock within 5 minutes, the plan fails.
+
+### 4. `-input=false`
+
+* **Description:** Disables interactive variable prompts.
+* **Use Case:** Used in automation pipelines to avoid Terraform asking for input.
+* **Example:**
+
+  ```bash
+  terraform plan -input=false
+  ```
+
+### 5. `-parallelism=N`
+
+* **Description:** Defines how many resources Terraform can plan in parallel.
+* **Default:** 10
+* **Use Case:** Control concurrency for large-scale infrastructure planning.
+* **Example:**
+
+  ```bash
+  terraform plan -parallelism=5
+  ```
+
+### 6. `-refresh=false`
+
+* **Description:** Skips refreshing the real infrastructure state before generating a plan.
+* **Use Case:** Speeds up planning when you know the infrastructure hasn’t changed.
+* **Example:**
+
+  ```bash
+  terraform plan -refresh=false
+  ```
+
+### 7. `-destroy`
+
+* **Description:** Creates a plan to destroy all managed resources.
+* **Use Case:** Used before decommissioning environments or testing teardown.
+* **Example:**
+
+  ```bash
+  terraform plan -destroy -out=destroy.tfplan
+  ```
+
+
 ### Common Issues
 - Invalid configuration
 - Missing variables
@@ -191,6 +369,62 @@ Initializes a Terraform project, downloads the required provider plugins, fetche
   * `terraform apply`
   * Optional: `terraform apply planfile`
   * Optional: `terraform apply -target=RESOURCE` (to apply specific resources only)
+## Terraform Apply - Real-World Options
+
+### 1. `-auto-approve`
+
+* **Description:** Skips the interactive approval step (no need to type 'yes').
+* **Use Case:** Used in automation pipelines (CI/CD) for non-interactive applies.
+* **Example:**
+
+  ```bash
+  terraform apply -auto-approve
+  ```
+
+### 2. `-var` and `-var-file`
+
+* **Description:** Pass variables directly or load from a variable file.
+* **Use Case:** Provide environment-specific configurations.
+* **Examples:**
+
+  ```bash
+  terraform apply -var="instance_type=t2.micro"
+  terraform apply -var-file=dev.tfvars
+  ```
+
+### 3. `-lock` and `-lock-timeout`
+
+* **Description:** Prevent multiple Terraform runs from changing the state at the same time.
+* **Use Case:** Ensures state file consistency in team environments.
+* **Examples:**
+
+  ```bash
+  terraform apply -lock=false
+  terraform apply -lock-timeout=5m
+  ```
+
+### 4. `-parallelism=N`
+
+* **Description:** Limits how many resources Terraform applies in parallel.
+* **Default:** 10
+* **Use Case:** Control speed and avoid provider (e.g., AWS) API rate limits.
+* **Example:**
+
+  ```bash
+  terraform apply -parallelism=5
+  ```
+
+  > Example: If you have 20 resources and use `-parallelism=5`, Terraform creates **5 at a time**, in **4 batches total**, but the apply command runs **once**.
+
+### 5. `-input=false`
+
+* **Description:** Disables interactive variable prompts. Terraform fails if required variables are missing.
+* **Use Case:** Used in CI/CD pipelines where manual input isn’t possible.
+* **Example:**
+
+  ```bash
+  terraform apply -input=false
+  ```
 
 
 ### Common Issues
@@ -211,7 +445,83 @@ Initializes a Terraform project, downloads the required provider plugins, fetche
 - terraform destroy
 - Optional flags:
   - `-target=resource_name` → destroy specific resource
-  - `-auto-approve` → skip confirmation
+- `-auto-approve` → skip confirmation
+
+## Terraform Destroy - Real-World Options
+
+### 1. `-auto-approve`
+
+* **Description:** Skips the interactive approval step (no need to type 'yes').
+* **Use Case:** Commonly used in automation or CI/CD pipelines where manual confirmation isn't possible.
+* **Example:**
+
+  ```bash
+  terraform destroy -auto-approve
+  ```
+
+### 2. `-var` and `-var-file`
+
+* **Description:** Pass variable values directly or from a variable file.
+* **Use Case:** Specify environment-specific configurations for destruction (e.g., destroy only a dev environment).
+* **Examples:**
+
+  ```bash
+  terraform destroy -var="env=dev"
+  terraform destroy -var-file=dev.tfvars
+  ```
+
+### 3. `-lock` and `-lock-timeout`
+
+* **Description:** Controls Terraform's state file locking behavior during destroy.
+* **Use Case:** Prevent concurrent destroy operations or state corruption in shared backends.
+* **Examples:**
+
+  ```bash
+  terraform destroy -lock=false
+  terraform destroy -lock-timeout=5m
+  ```
+
+### 4. `-target=resource_type.name`
+
+* **Description:** Destroys only the specified resource and its dependencies.
+* **Use Case:** Useful when you want to delete a specific resource instead of the entire infrastructure.
+* **Example:**
+
+  ```bash
+  terraform destroy -target=aws_instance.app_server
+  ```
+
+### 5. `-input=false`
+
+* **Description:** Disables interactive input prompts.
+* **Use Case:** Used in CI/CD pipelines where user input is not available.
+* **Example:**
+
+  ```bash
+  terraform destroy -input=false
+  ```
+
+### 6. `-refresh=false`
+
+* **Description:** Skips refreshing remote objects before destruction.
+* **Use Case:** Speeds up destroy in automation when you are sure resources are already in the known state.
+* **Example:**
+
+  ```bash
+  terraform destroy -refresh=false
+  ```
+
+### 7. `-parallelism=N`
+
+* **Description:** Limits how many resources Terraform destroys in parallel.
+* **Default:** 10
+* **Use Case:** Controls API rate limits or ensures graceful teardown in large infrastructures.
+* **Example:**
+
+  ```bash
+  terraform destroy -parallelism=3
+  ```
+
 ### Common Issues
 - Dependency errors
 - Authentication failures
@@ -245,6 +555,78 @@ Initializes a Terraform project, downloads the required provider plugins, fetche
 ### Syntax
 - terraform fmt
 - Optional: `-recursive` → format all subdirectories
+## Terraform Fmt - Real-World Options
+
+### 1. `-recursive`
+
+* **Description:** Formats all `.tf` and `.tfvars` files in the current directory **and all subdirectories**.
+* **Use Case:** Commonly used in repositories containing multiple modules or environments.
+* **Example:**
+
+  ```bash
+  terraform fmt -recursive
+  ```
+
+---
+
+### 2. `-check`
+
+* **Description:** Checks if Terraform files are properly formatted without changing them.
+* **Use Case:** Widely used in **CI/CD pipelines** to enforce Terraform formatting standards.
+* **Example:**
+
+  ```bash
+  terraform fmt -check
+  ```
+
+---
+
+### 3. `-diff`
+
+* **Description:** Displays the differences between formatted and unformatted files.
+* **Use Case:** Useful during reviews to see what changes `terraform fmt` would make before applying them.
+* **Example:**
+
+  ```bash
+  terraform fmt -diff
+  ```
+
+---
+
+### 4. `-list=false`
+
+* **Description:** Disables printing the list of files that were formatted.
+* **Use Case:** Used in automation scripts where only success/failure status matters, not filenames.
+* **Example:**
+
+  ```bash
+  terraform fmt -list=false
+  ```
+
+---
+
+### 5. `-write=false`
+
+* **Description:** Checks formatting but doesn’t modify any files (only reports differences).
+* **Use Case:** Used in pre-commit hooks or validation pipelines to verify format compliance.
+* **Example:**
+
+  ```bash
+  terraform fmt -write=false
+  ```
+
+---
+
+### 6. `-no-color`
+
+* **Description:** Disables colored output in terminal.
+* **Use Case:** Helpful when redirecting output to log files or external tools.
+* **Example:**
+
+  ```bash
+  terraform fmt -no-color
+  ```
+
 ### Common Issues
 - Minimal; mainly style-related
 ### Troubleshooting
@@ -364,6 +746,91 @@ terraform apply -replace="aws_instance.web_server"
 ### Syntax
 - terraform import <resource_type.resource_name> <resource_id>
 - Example: terraform import aws_instance.web_server i-1234567890abcdef0
+## Terraform Import - Real-World Options
+
+### 1. `-config=PATH`
+
+* **Description:** Specifies the path to the Terraform configuration directory (defaults to current directory).
+* **Use Case:** Used when importing resources into configurations stored in a different folder.
+* **Example:**
+
+  ```bash
+  terraform import -config=./vpc aws_vpc.main vpc-1234abcd
+  ```
+
+---
+
+### 2. `-var`
+
+* **Description:** Passes variable values directly from the command line.
+* **Use Case:** Helpful when importing resources that depend on dynamic variable values.
+* **Example:**
+
+  ```bash
+  terraform import -var="env=dev" aws_s3_bucket.my_bucket my-app-dev
+  ```
+
+---
+
+### 3. `-var-file`
+
+* **Description:** Loads variables from a `.tfvars` file.
+* **Use Case:** Used in real-world setups to import resources into environment-specific configurations.
+* **Example:**
+
+  ```bash
+  terraform import -var-file=dev.tfvars aws_vpc.main vpc-1234abcd
+  ```
+
+---
+
+### 4. `-input=false`
+
+* **Description:** Disables interactive variable prompts.
+* **Use Case:** Used in CI/CD pipelines or automation where no user input is available.
+* **Example:**
+
+  ```bash
+  terraform import -input=false aws_s3_bucket.logs_bucket my-logs
+  ```
+
+---
+
+### 5. `-lock` and `-lock-timeout`
+
+* **Description:** Controls Terraform state file locking during import.
+* **Use Case:** Prevents simultaneous import operations that could corrupt the state file.
+* **Examples:**
+
+  ```bash
+  terraform import -lock=false aws_instance.web i-0123abcd
+  terraform import -lock-timeout=5m aws_vpc.main vpc-1234abcd
+  ```
+
+---
+
+### 6. `-no-color`
+
+* **Description:** Disables colored output in the terminal.
+* **Use Case:** Used when sending logs to external systems that don’t support color codes.
+* **Example:**
+
+  ```bash
+  terraform import -no-color aws_vpc.main vpc-0a1b2c3d4e
+  ```
+
+---
+
+### 7. `-state=PATH`
+
+* **Description:** Specifies a custom state file location for the import operation.
+* **Use Case:** Useful for managing imports in multi-environment setups with different state files.
+* **Example:**
+
+  ```bash
+  terraform import -state=./dev.tfstate aws_vpc.main vpc-0abc123
+  ```
+
 ### Key Notes
 - Only imports into state; does not generate `.tf` config
 - After import, manually write `.tf` block matching imported resource
@@ -400,6 +867,79 @@ Updates the Terraform state file to match the real-world infrastructure.
 ```
 terraform refresh
 ```
+## Terraform Refresh - Real-World Options
+
+### 1. `-var`
+
+* **Description:** Passes variable values directly from the command line.
+* **Use Case:** Useful when the refresh depends on environment-specific variables that aren't set by default.
+* **Example:**
+
+  ```bash
+  terraform refresh -var="env=dev"
+  ```
+
+---
+
+### 2. `-var-file`
+
+* **Description:** Loads variables from a `.tfvars` file.
+* **Use Case:** Commonly used in multi-environment setups to refresh state for specific environments (dev, qa, prod).
+* **Example:**
+
+  ```bash
+  terraform refresh -var-file=dev.tfvars
+  ```
+
+---
+
+### 3. `-lock` and `-lock-timeout`
+
+* **Description:** Controls Terraform state file locking during the refresh process.
+* **Use Case:** Prevents multiple concurrent refresh operations that could cause state corruption.
+* **Examples:**
+
+  ```bash
+  terraform refresh -lock=false
+  terraform refresh -lock-timeout=5m
+  ```
+
+---
+
+### 4. `-input=false`
+
+* **Description:** Disables interactive variable prompts.
+* **Use Case:** Used in automation and CI/CD pipelines where manual input is not possible.
+* **Example:**
+
+  ```bash
+  terraform refresh -input=false
+  ```
+
+---
+
+### 5. `-no-color`
+
+* **Description:** Disables color output in the terminal.
+* **Use Case:** Ideal for CI/CD logs or systems that don’t support ANSI color codes.
+* **Example:**
+
+  ```bash
+  terraform refresh -no-color
+  ```
+
+---
+
+### 6. `-target=resource_type.name`
+
+* **Description:** Refreshes only the specified resource instead of the entire state.
+* **Use Case:** Useful when you want to update the state of a specific resource after a manual change in AWS or another provider.
+* **Example:**
+
+  ```bash
+  terraform refresh -target=aws_instance.web_server
+  ```
+
 
 ### Example
 

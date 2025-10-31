@@ -1,15 +1,13 @@
-# 🧩 Jenkins Shared Library — Using Resource Scripts and Utilities
 
-## 📘 Overview
+## 🧩 Jenkins Shared Library — Using Resource Scripts and Utilities
 
-A **Shared Library** in Jenkins allows you to centralize common pipeline logic and reuse it across multiple Jenkinsfiles.
-It keeps pipelines clean, modular, and easy to maintain.
+### 📘 Overview
+
+A Shared Library in Jenkins allows you to **centralize common pipeline logic** and reuse it across multiple Jenkinsfiles. It keeps pipelines **clean, modular, and easy to maintain**.
 
 ---
 
-## 🗂️ Directory Structure
-
-A typical **Shared Library** repo looks like this:
+### 🗂️ Directory Structure
 
 ```
 jenkins-shared-library/
@@ -24,110 +22,252 @@ jenkins-shared-library/
 └── src/ (optional)
 ```
 
-### 🧐 Explanation:
+**Explanation:**
 
-* **vars/** → Stores pipeline entry points (each `.groovy` file = one global variable available in Jenkins).
-* **resources/** → Stores external files like shell scripts, YAMLs, or configuration templates.
-* **src/** → (Optional) Used for complex Groovy classes or helper logic. For declarative pipelines, it’s usually **not needed**.
-* **utilities.groovy** → A helper file containing reusable functions (like executing shell scripts from resources).
+* `vars/` → Stores reusable pipeline entry points (each `.groovy` = one global variable available in Jenkins).
+* `resources/` → Stores external files like shell scripts, YAMLs, or templates.
+* `src/` → (Optional) For advanced Groovy classes or helper logic.
+* `utilities.groovy` → A helper file containing reusable functions like executing resource scripts.
 
 ---
 
-## ⚙️ utilities.groovy (Helper Functions)
-
-This file provides reusable functions, like loading and executing shell scripts from the **resources/** directory.
+# 🧩 Jenkins Shared Library — `vars/utilities.groovy`
 
 ```groovy
-// vars/utilities.groovy
 def call() {
     echo "Utilities loaded successfully."
 }
 
-// Helper function to run scripts from resources
-def runScript(scriptName) {
-    def scriptContent = libraryResource(scriptName)
-    writeFile file: 'tempScript.sh', text: scriptContent
-    sh 'chmod +x tempScript.sh'
-    sh './tempScript.sh'
+// Simple helper: run the .sh script that matches the .groovy filename
+def autoRun(scriptBaseName) {
+    def scriptPath = "scripts/${scriptBaseName}.sh"
+    echo "Running script: ${scriptPath}"
+
+    def scriptContent = libraryResource(scriptPath)
+    writeFile file: "${scriptBaseName}.sh", text: scriptContent
+    sh "chmod +x ${scriptBaseName}.sh"
+    sh "./${scriptBaseName}.sh"
 }
 ```
 
-### 🔗 Explanation
+---
 
-* **libraryResource()** → Loads files from the resources directory.
-* **writeFile** → Creates a temporary script file inside the workspace.
-* **sh './tempScript.sh'** → Executes the script.
+# 🧠 Line-by-Line Explanation
 
-This function can now be reused in any pipeline file instead of writing the same logic repeatedly.
+### 🟩 Line 1–3
+
+```groovy
+def call() {
+    echo "Utilities loaded successfully."
+}
+```
+
+* `def call()` — defines a **default entry point** in the shared library file.
+  When you use `utilities()` inside a Jenkinsfile, Jenkins automatically executes this block.
+* The `echo` statement prints a confirmation message showing that the utilities library was loaded correctly.
+
+🧩 Example output:
+
+```
+Utilities loaded successfully.
+```
+
+This acts like a sanity check to confirm your shared library is available.
 
 ---
 
-## 🔧 buildPipeline.groovy
+### 🟩 Line 6
 
-This file defines the build pipeline stages.
+```groovy
+def autoRun(scriptBaseName) {
+```
+
+* Defines a **custom function** named `autoRun`.
+* It takes one argument → `scriptBaseName`.
+* This parameter is the base name of the script you want to run (without `.sh`).
+
+🧩 Example:
+If you call `utilities.autoRun('build')`, then `scriptBaseName = 'build'`.
+
+---
+
+### 🟩 Line 7
+
+```groovy
+def scriptPath = "scripts/${scriptBaseName}.sh"
+```
+
+* Builds the **relative path** to your shell script stored in the shared library resources.
+* `${scriptBaseName}` dynamically inserts the script name passed earlier.
+
+🧩 Example:
+If `scriptBaseName = 'deploy'`, then this becomes:
+
+```
+scripts/deploy.sh
+```
+
+This is where Jenkins will look for your script in the shared library’s `resources` directory.
+
+---
+
+### 🟩 Line 8
+
+```groovy
+echo "Running script: ${scriptPath}"
+```
+
+* Prints the name/path of the script being executed to the Jenkins console.
+* Helps you confirm which specific `.sh` file is running during each stage.
+
+🧩 Example output:
+
+```
+Running script: scripts/build.sh
+```
+
+---
+
+### 🟩 Line 10
+
+```groovy
+def scriptContent = libraryResource(scriptPath)
+```
+
+* `libraryResource()` is a built-in Jenkins function that fetches files from your shared library’s `resources` directory.
+* Instead of returning a file, it gives you the **file content as text**.
+* So, `scriptContent` now stores everything inside `resources/scripts/<scriptName>.sh`.
+
+🧩 Example:
+If your `resources/scripts/build.sh` contains:
+
+```bash
+echo "Building the app"
+```
+
+then `scriptContent = 'echo "Building the app"'`
+
+---
+
+### 🟩 Line 11
+
+```groovy
+writeFile file: "${scriptBaseName}.sh", text: scriptContent
+```
+
+* Creates a **new file** in the Jenkins workspace (the agent machine where the job runs).
+* `file:` → specifies the filename (for example, `build.sh`).
+* `text:` → specifies the content to write into that file (from `scriptContent`).
+
+🧩 Linux Analogy:
+It’s like doing:
+
+```bash
+touch build.sh
+cat > build.sh <<EOF
+echo "Building the app"
+EOF
+```
+
+So Jenkins both creates and fills the file in one command.
+
+---
+
+### 🟩 Line 12
+
+```groovy
+sh "chmod +x ${scriptBaseName}.sh"
+```
+
+* Runs a shell command (`sh`) on the Jenkins agent.
+* Gives **execute permission** to the file so it can be run as a script.
+
+🧩 Equivalent Linux command:
+
+```bash
+chmod +x build.sh
+```
+
+Without this, Jenkins would throw a *Permission denied* error when trying to run the script.
+
+---
+
+### 🟩 Line 13
+
+```groovy
+sh "./${scriptBaseName}.sh"
+```
+
+* Executes the newly created shell script in the current directory.
+* Jenkins runs it exactly like you would in a terminal.
+* Any logs or `echo` statements from inside the script appear in Jenkins console output.
+
+🧩 Example:
+
+```bash
+./build.sh
+```
+
+If `build.sh` has `echo "Build complete"`, Jenkins console will display:
+
+```
+Build complete
+```
+
+---
+
+# ✅ Overall Flow Summary
+
+When you call `utilities.autoRun('build')`, Jenkins performs these steps:
+
+1. Builds the path → `scripts/build.sh`
+2. Fetches the file content from shared library resources.
+3. Writes it to a real file in the workspace (`build.sh`).
+4. Makes it executable (`chmod +x build.sh`).
+5. Executes it (`./build.sh`).
+
+🧩 Jenkins Console Output Example:
+
+```
+Utilities loaded successfully.
+Running script: scripts/build.sh
+Building the app
+Build complete
+```
+
+---
+
+### 🔧 buildPipeline.groovy
+
+In real-world Jenkinsfiles, **you shouldn’t define full `pipeline {}` or `stage {}` blocks** inside shared libraries. The shared library should only define the **logic** that runs inside stages.
 
 ```groovy
 // vars/buildPipeline.groovy
 def call() {
-    pipeline {
-        agent any
-
-        stages {
-            stage('Build') {
-                steps {
-                    script {
-                        utilities.runScript('build.sh')
-                    }
-                }
-            }
-
-            stage('Test') {
-                steps {
-                    script {
-                        utilities.runScript('test.sh')
-                    }
-                }
-            }
-        }
-    }
+    echo "Executing build steps..."
+    utilities.runScript('build.sh')
+    echo "Executing test steps..."
+    utilities.runScript('test.sh')
 }
 ```
 
-### 🔗 Explanation
-
-* Calls `utilities.runScript()` to execute resource-based scripts for each stage.
-* Keeps Jenkinsfile lightweight and clean.
-
 ---
 
-## 🚀 deployPipeline.groovy
-
-Used for deployment-related stages.
+### 🚀 deployPipeline.groovy
 
 ```groovy
 // vars/deployPipeline.groovy
 def call() {
-    pipeline {
-        agent any
-
-        stages {
-            stage('Deploy') {
-                steps {
-                    script {
-                        utilities.runScript('deploy.sh')
-                    }
-                }
-            }
-        }
-    }
+    echo "Executing deployment steps..."
+    utilities.runScript('deploy.sh')
 }
 ```
 
 ---
 
-## 📃 Example Shell Scripts
+### 📃 Example Shell Scripts
 
-### resources/build.sh
+`resources/build.sh`
 
 ```bash
 #!/bin/bash
@@ -136,7 +276,7 @@ echo "Running build..."
 echo "Build completed!"
 ```
 
-### resources/test.sh
+`resources/test.sh`
 
 ```bash
 #!/bin/bash
@@ -145,7 +285,7 @@ echo "Running tests..."
 echo "Tests passed!"
 ```
 
-### resources/deploy.sh
+`resources/deploy.sh`
 
 ```bash
 #!/bin/bash
@@ -156,32 +296,89 @@ echo "Deployment successful!"
 
 ---
 
-## 👤 How It All Connects
+## 🧩 Jenkinsfile Example
 
-1. Jenkins loads the Shared Library.
-2. The `buildPipeline` and `deployPipeline` files act as entry points.
-3. Each pipeline calls functions from `utilities.groovy`.
-4. `utilities.groovy` runs the respective shell script from `resources/`.
+```groovy
+@Library('jenkins-shared-library') _
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Build and Test') {
+            steps {
+                script {
+                    // Calls the buildPipeline() from vars/build.groovy
+                    buildPipeline()
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    // Calls the deployPipeline() from vars/deploy.groovy
+                    deployPipeline()
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline execution completed."
+        }
+    }
+}
+
+```
+### ✅ Key Point:** Only one `pipeline {}` and set of `stage {}` blocks should exist — in your Jenkinsfile.
+
+## ⚙️ How to Configure Shared Library in Jenkins
+
+1. Go to **Manage Jenkins → Configure System**.
+2. Scroll to **Global Pipeline Libraries**.
+3. Add a new library:
+
+   * **Name:** `jenkins-shared-library`
+   * **Default version:** `main` (or branch name)
+   * **Source Code Management:** Git
+   * Provide your Git repo URL.
+4. Save the configuration.
 
 ---
 
-## 📈 Benefits
+### 👤 How It All Connects
 
-* No repetitive script logic across pipelines.
-* Centralized and easy maintenance.
-* Clear separation of logic, scripts, and reusable functions.
-* Works cleanly with **Declarative Pipelines**.
+1. Jenkins loads the shared library from the configured Git repo.
+2. Jenkinsfile calls `buildPipeline()` and `deployPipeline()`.
+3. These call `utilities.runScript()` to execute corresponding shell scripts from `resources/`.
 
 ---
 
-## 🛰️ Summary
+### 📈 Benefits
 
-* **vars/** → Contains Groovy pipeline files.
-* **resources/** → Contains scripts (sh, yaml, etc.).
-* **utilities.groovy** → Reusable helper functions.
-* Each pipeline file (build/deploy) uses `utilities.runScript()` for its respective resource script.
+* Keeps Jenkinsfiles clean and modular.
+* Centralizes logic for easy maintenance.
+* Avoids duplicate shell logic across teams.
+* Scalable and reusable.
 
-This structure ensures a **modular, scalable, and DRY (Don't Repeat Yourself)** Jenkins setup.
+---
+
+### 🛰️ Summary
+
+| Component          | Purpose                                            |
+| ------------------ | -------------------------------------------------- |
+| `vars/`            | Contains Groovy logic files (build, deploy, etc.)  |
+| `resources/`       | Contains external scripts or templates             |
+| `utilities.groovy` | Helper for reusable operations                     |
+| `Jenkinsfile`      | Defines stages, and calls shared library functions |
+
+This ensures a **modular, DRY (Don’t Repeat Yourself)** and **production-safe** Jenkins setup.
+
+---
+---
+
 
 ## ⚙️ Configuring Jenkins Shared Library in Jenkins UI
 

@@ -844,5 +844,112 @@ depends_on = [aws_instance.web[0], aws_instance.web[1]]
 
 ---
 ---
+
+### Terraform Locals – Detailed Explanation Notes
+
+**Concept / What**
+Locals in Terraform are used to define **computed or derived values** inside a module.
+They help avoid repeating logic, simplify complex expressions, and keep configuration DRY (Don’t Repeat Yourself).
+Locals are **module-scoped** and **cannot be overridden** by CLI, `.tfvars`, or other files.
+
+**Why / Purpose / Use Case in Real-World**
+Compute values that are reused across resources in the same module.
+Generate dynamic resource names, tags, or merged maps.
+Avoid duplication of expressions or long logic blocks.
+Use for environment-specific derived values without external overrides.
+
+**How it Works / Steps / Syntax**
+Define locals in a Terraform file:
+
+```hcl
+locals {
+  env_name       = var.env
+  instance_type  = var.env == "prod" ? "t3.large" : "t2.micro"
+  common_tags    = { App = var.app_name, Environment = var.env }
+  full_name      = "${var.app_name}-${var.env}"
+}
+```
+
+Use the local value in a resource block:
+
+```hcl
+resource "aws_instance" "web" {
+  ami           = "ami-123456"
+  instance_type = local.instance_type
+  tags          = local.common_tags
+}
+```
+
+**Common Issues / Errors**
+Cannot override locals from CLI, `.tfvars`, or other modules.
+Overly complex locals can make code hard to read.
+Referencing undefined locals causes Terraform plan/apply to fail.
+
+**Troubleshooting / Fixes**
+Check that the local is properly defined in the same module.
+Simplify long expressions or break into multiple locals.
+Use `terraform console` to evaluate locals interactively.
+
+**Best Practices / Tips**
+Use locals to **centralize reusable logic** like names, tags, or computed defaults.
+Keep expressions clear and readable; avoid deeply nested locals.
+Combine maps and `merge()` or `lookup()` for flexible configurations.
+Use variables for any value that needs to be overridden externally.
+
+---
 ---
 
+### Terraform Variables vs Locals – Detailed Explanation Notes
+
+**Concept / What**
+Variables in Terraform are **inputs** to modules or resources and can be configured externally via `.tfvars`, CLI, or environment variables.
+Locals are **computed or derived values** defined inside a module and are used for internal logic, simplification, and reusability.
+
+**Why / Purpose / Use Case in Real-World**
+Variables are used when values need to be **flexible or environment-specific**, such as instance type, region, AMI ID, or counts.
+Locals are used when values are **computed, reused multiple times**, or derived from other variables to avoid repetition, simplify complex logic, or generate dynamic resource names/tags.
+
+**How it Works / Steps / Syntax**
+Variables example:
+
+```hcl
+variable "env" {
+  default = "dev"
+}
+resource "aws_instance" "web" {
+  instance_type = var.env == "prod" ? "t3.large" : "t2.micro"
+}
+```
+
+Locals example:
+
+```hcl
+locals {
+  instance_type = var.env == "prod" ? "t3.large" : "t2.micro"
+  tags          = { App = "myapp", Environment = var.env }
+}
+resource "aws_instance" "web" {
+  instance_type = local.instance_type
+  tags          = local.tags
+}
+```
+
+**Common Issues / Errors**
+Variables not provided and no default → Terraform fails.
+Type mismatch between variable definition and value.
+Locals cannot be overridden externally; trying to pass via CLI or `.tfvars` has no effect.
+
+**Troubleshooting / Fixes**
+Provide missing variables using CLI, `.tfvars`, or default values.
+Check variable types match the assigned values.
+Use `terraform console` to inspect local values.
+
+**Best Practices / Tips**
+Use variables for values that **need external overrides**.
+Use locals for **derived, reusable, or computed values** inside a module.
+Keep locals simple, readable, and avoid excessive nesting.
+Document variables and locals clearly for team collaboration.
+
+---
+---
+---

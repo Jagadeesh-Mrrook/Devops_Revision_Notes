@@ -2365,4 +2365,3 @@ You would have to deploy Kubernetes manually using `kops` or `kubeadm` on EC2 â€
 ---
 ---
 
-

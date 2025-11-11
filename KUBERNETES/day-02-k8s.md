@@ -1201,4 +1201,161 @@ It provides shared resources such as networking (IP, port space) and storage (vo
 ---
 ---
 
+# 🧩 Kubernetes Concept: Debugging Pods (`kubectl logs`, `exec`, `describe`)
+
+---
+
+## **Concept / What**
+
+Debugging Pods means using Kubernetes CLI commands to investigate issues in **Pods** and their **containers**.
+It helps identify why a Pod failed, crashed, or is stuck, by checking logs, container state, and events.
+
+Kubernetes mainly provides three commands for debugging:
+
+* `kubectl logs` → View container logs.
+* `kubectl exec` → Execute commands inside containers.
+* `kubectl describe` → Inspect Pod details, events, and failure reasons.
+
+---
+
+## **Why / Purpose / Use Case**
+
+Used for:
+
+* Investigating **crashed or stuck Pods**.
+* Debugging **application or image issues** inside containers.
+* Inspecting **Pod configurations, events, probes, and environment**.
+* Performing **real-time troubleshooting** without redeploying.
+
+---
+
+## **How / Syntax / Examples**
+
+### **1️⃣ View Logs — `kubectl logs`**
+
+View container logs inside a Pod.
+
+```bash
+kubectl logs <pod-name>
+```
+
+If multiple containers:
+
+```bash
+kubectl logs <pod-name> -c <container-name>
+```
+
+Check logs from the previous crash:
+
+```bash
+kubectl logs <pod-name> -c <container-name> --previous
+```
+
+💡 **Used for:** Application errors, crash traces, or init container failures.
+
+---
+
+### **2️⃣ Execute Commands Inside a Container — `kubectl exec`**
+
+Open an interactive shell or run commands inside a running container.
+
+```bash
+kubectl exec -it <pod-name> -- /bin/bash
+```
+
+If multiple containers:
+
+```bash
+kubectl exec -it <pod-name> -c <container-name> -- /bin/sh
+```
+
+💡 **Used for:** Checking filesystem, configs, connectivity, environment variables.
+
+---
+
+### **3️⃣ Describe Pod — `kubectl describe`**
+
+View Pod details, status, and events.
+
+```bash
+kubectl describe pod <pod-name>
+```
+
+Shows:
+
+* Status (`Running`, `CrashLoopBackOff`, etc.)
+* Events (image pull errors, probe failures)
+* Container states and restart counts
+
+💡 **Used for:** Identifying scheduling errors, probe failures, or crash reasons.
+
+---
+
+## **Command Summary Table**
+
+| Command            | Purpose                       | Works When                                             |
+| ------------------ | ----------------------------- | ------------------------------------------------------ |
+| `kubectl logs`     | View container logs           | Pod/Container exists (use `--previous` for last crash) |
+| `kubectl exec`     | Run commands inside container | Container is running                                   |
+| `kubectl describe` | Inspect Pod details & events  | Works for all Pod states (even failed)                 |
+
+---
+
+## **Behavior with Crashed or Deleted Pods**
+
+| Pod/Container State               | Logs                            | Describe | Exec |
+| --------------------------------- | ------------------------------- | -------- | ---- |
+| **Container crashed (Pod alive)** | ✅ Yes (`--previous`)            | ✅ Yes    | ❌ No |
+| **Pod failed but not deleted**    | ⚠️ Sometimes (if logs retained) | ✅ Yes    | ❌ No |
+| **Pod deleted**                   | ❌ No                            | ❌ No     | ❌ No |
+
+💡 Once a Pod is deleted, **no kubectl command works**, unless logs are stored in external systems (e.g., CloudWatch, ELK).
+
+---
+
+## **Common Pod Statuses**
+
+| Status                | Meaning                              | Troubleshooting                           |
+| --------------------- | ------------------------------------ | ----------------------------------------- |
+| **Pending**           | Waiting for scheduling or image pull | Check node capacity, image registry       |
+| **Running**           | Containers running normally          | Check app-level issues if needed          |
+| **CrashLoopBackOff**  | Container repeatedly crashing        | Use `kubectl logs --previous`             |
+| **ImagePullBackOff**  | Image cannot be pulled               | Verify image path, tag, and registry auth |
+| **Error / Completed** | Container exited                     | Check exit code and logs                  |
+
+---
+
+## **Real-World Troubleshooting Examples**
+
+| Issue               | Symptom                          | Debugging Steps                          |
+| ------------------- | -------------------------------- | ---------------------------------------- |
+| **App crash**       | Pod in `CrashLoopBackOff`        | `kubectl logs --previous`                |
+| **Startup failure** | Pod stuck in `ContainerCreating` | `kubectl describe pod`                   |
+| **Network issue**   | App unreachable                  | `kubectl exec` → test with `curl`/`ping` |
+| **Probe failures**  | Pod restarting repeatedly        | `kubectl describe pod` → check Events    |
+| **Image issue**     | `ImagePullBackOff`               | Verify registry, image name, credentials |
+
+---
+
+## **Best Practices**
+
+* Always check `kubectl describe` first — it shows recent events and reasons.
+* Use `kubectl logs` for container-level debugging (use `--previous` if crashed).
+* Use `kubectl exec` to explore live containers.
+* Use external logging (e.g., CloudWatch, ELK, Loki) for persistent logs.
+* Use `kubectl debug` (v1.23+) to create temporary debug containers for troubleshooting.
+
+---
+
+## **In Short**
+
+> **`kubectl describe`** → What happened (events & reasons).
+> **`kubectl logs`** → Why it happened (app errors).
+> **`kubectl exec`** → Fix or inspect it (inside container).
+> Works best before Pod deletion — after deletion, only centralized logging helps.
+
+---
+---
+---
+
 

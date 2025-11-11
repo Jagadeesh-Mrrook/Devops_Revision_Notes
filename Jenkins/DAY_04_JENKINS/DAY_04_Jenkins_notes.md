@@ -389,3 +389,42 @@ Ensures Jenkins plugins work with each other and with Jenkins core version.
 * Avoid installing unnecessary plugins.
 * Coordinate updates with admin team.
 
+---
+---
+
+### 12.Job Configuration History Plugin
+
+**Concept / What:**
+Plugin that records and version-controls all Jenkins configuration changes (jobs, nodes, system settings), allowing rollback and audit tracking.
+
+**Why / Purpose / Use Case in Real-World:**
+
+* Track who made changes and when.
+* Rollback Jenkins jobs or global configurations after incorrect modifications.
+* Maintain compliance and audit logs.
+
+**How it Works / Steps / Syntax:**
+
+1. Install the **Job Configuration History Plugin**.
+2. It automatically records every configuration change (job, node, system).
+3. View changes under `Manage Jenkins → Job Config History`.
+4. Compare or restore any previous configuration version.
+
+**Common Issues / Errors:**
+
+* Rollback option disabled if config history not enabled.
+* Storage grows large due to too many history records.
+
+**Troubleshooting / Fixes:**
+
+* Enable history from Jenkins global config.
+* Configure cleanup strategy to remove old versions.
+
+**Best Practices / Tips:**
+
+* Enable it in all production Jenkins setups.
+* Regularly clean old history to save space.
+* Combine with **Audit Trail Plugin** for full user activity logging.
+
+---
+---

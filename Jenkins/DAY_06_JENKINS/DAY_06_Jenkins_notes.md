@@ -133,7 +133,7 @@ pipeline {
 
 ---
 
-````markdown
+
 # Jenkins – Code Coverage Tools (Detailed Explanation)
 
 ## Concept / What:
@@ -150,7 +150,7 @@ Code coverage tools measure how much of the application code is exercised by uni
 
 ### 1. Maven Setup (JaCoCo Plugin)
 Add JaCoCo plugin in `pom.xml`:
-```xml
+
 <plugin>
     <groupId>org.jacoco</groupId>
     <artifactId>jacoco-maven-plugin</artifactId>
@@ -170,19 +170,19 @@ Add JaCoCo plugin in `pom.xml`:
         </execution>
     </executions>
 </plugin>
-````
+
 
 ### 2. Jenkins Build Stage
 
 Run Maven build & tests in Jenkins:
 
-```groovy
+
 stage('Build & Test') {
     steps {
         sh 'mvn clean install'
     }
 }
-```
+
 
 * During `test` phase, JaCoCo instruments the code and generates coverage reports in Jenkins workspace (`target/site/jacoco/index.html`).
 

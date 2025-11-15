@@ -10,27 +10,53 @@
 - Scripted: Advanced workflows like dynamic node selection, multiple branch handling, conditional execution, or custom logic.
 
 ## Examples
-// Declarative Pipeline
+
+## Declarative Pipeline
+
+```groovy
 pipeline {
     agent any
     stages {
-        stage('Build') { steps { echo 'Building...' } }
-        stage('Test') { steps { echo 'Testing...' } }
+        stage('Build') {
+            steps {
+                echo 'Building...'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing...'
+            }
+        }
     }
     post {
-        success { echo 'Pipeline succeeded' }
-        failure { echo 'Pipeline failed' }
+        success {
+            echo 'Pipeline succeeded'
+        }
+        failure {
+            echo 'Pipeline failed'
+        }
     }
 }
+```
 
-// Scripted Pipeline
+## Scripted Pipeline
+
+```groovy
 node {
-    stage('Build') { echo 'Building...' }
-    stage('Test') { echo 'Testing...' }
+    stage('Build') {
+        echo 'Building...'
+    }
+    stage('Test') {
+        echo 'Testing...'
+    }
+    
     if (env.BRANCH_NAME == 'main') {
-        stage('Deploy') { echo 'Deploying...' }
+        stage('Deploy') {
+            echo 'Deploying...'
+        }
     }
 }
+```
 
 ## Common Issues / Errors
 - Mixing declarative and scripted syntax incorrectly.
@@ -72,6 +98,7 @@ node {
 5. Jenkins fetches and executes the pipeline.
 
 ## Example (Declarative)
+```groovy
 pipeline {
     agent any
     stages {
@@ -83,7 +110,7 @@ pipeline {
         failure { echo 'Pipeline failed' }
     }
 }
-
+```
 ## Common Issues / Errors
 - Jenkinsfile not at repository root → Jenkins cannot detect.
 - Incorrect branch configuration → wrong Jenkinsfile executed.
@@ -125,6 +152,8 @@ pipeline {
 4. Combine with `env.BRANCH_NAME` to handle multibranch pipelines dynamically.
 
 ## Example (Declarative)
+
+```groovy
 pipeline {
     agent any
     parameters {
@@ -153,6 +182,7 @@ pipeline {
         }
     }
 }
+```
 
 ## Common Issues / Errors
 - Parameter names mismatched in pipeline code.
@@ -203,6 +233,7 @@ pipeline {
 4. Access variables in stages using `env.VAR_NAME`.
 
 ## Example (Declarative)
+```groovy
 pipeline {
     agent any
     parameters {
@@ -222,6 +253,7 @@ pipeline {
         }
     }
 }
+```
 
 ## Common Issues / Errors
 - Variables not scoped correctly → unavailable in some stages.
@@ -243,37 +275,33 @@ pipeline {
 - Combine with parameters and `env.BRANCH_NAME` for multibranch flexibility.
 - Avoid hardcoding environment-specific values directly in Jenkinsfile.
 
----
+## 🔹 Advanced Concept: Passing Environment Variables Across Stages
 
-# Quick Revision Notes - Environment Variables
+In Jenkins Declarative Pipelines, any variable defined inside a **stage-level `environment {}` block is NOT shared across stages**. It is **stage-scoped only**.
 
-## Key Points
-- Key-value pairs available to pipeline stages.
-- Types: built-in (Jenkins-provided) and custom (user-defined).
-- Custom variables defined in `environment` block; accessed via `env.VAR_NAME`.
-- Can dynamically reference parameters: `VERSION = "${params.APP_VERSION}"`.
-- Useful for multi-environment and multibranch pipelines.
+To pass a dynamically generated value from one stage to another, assign it to the global `env` object inside a `script` block:
 
-## Example (Declarative)
-pipeline {
-    agent any
-    environment {
-        DEPLOY_ENV = 'dev'
-        VERSION = "${params.APP_VERSION}"
-    }
-    stages {
-        stage('Deploy') {
-            steps { echo "Deploying version ${env.VERSION} to ${env.DEPLOY_ENV}" }
-        }
-    }
+```groovy
+script {
+    env.IMAGE_TAG = "v${env.BUILD_NUMBER}"
 }
+```
 
-## Issues / Tips
-- Ensure correct scope; don’t overwrite built-in variables.
-- Use descriptive names; test parameter references.
-- Prefer environment block for consistency.
-- Combine with branch-aware logic for multibranch pipelines.
+You can now use this variable in any later stage:
 
+```groovy
+echo "Using tag: ${env.IMAGE_TAG}"
+```
+
+### ✔ Works across all stages
+
+### ✔ Correct way to share dynamic values
+
+### ❌ Stage-level `environment {}` does *not* work across stages
+
+### ✔ Top-level `environment {}` works only for static or predefined values
+
+---
 ---
 
 # Jenkins `when` Conditions - Detailed Notes
@@ -300,6 +328,7 @@ pipeline {
 3. Stage is skipped automatically if the `when` condition evaluates to false.
 
 ## Example
+```groovy
 pipeline {
     agent any
     parameters {
@@ -319,7 +348,7 @@ pipeline {
         }
     }
 }
-
+```
 ## Common Issues / Errors
 - Stage silently skipped → misunderstanding the condition logic.
 - Branch name mismatch in `branch` condition.
@@ -365,7 +394,7 @@ pipeline {
 - `finally`: run cleanup actions regardless of success or failure.
 
 ## Example
-
+```groovy
 stage('Build') {
     steps {
         script {
@@ -386,7 +415,7 @@ stage('Build') {
     }
 }
 
-
+```
 
 
 ---
@@ -400,7 +429,7 @@ stage('Build') {
 - Useful for simple declarative error handling without scripting.
 
 ## Example
-
+```groovy
 stage('Test') {
     steps {
         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
@@ -408,7 +437,7 @@ stage('Test') {
         }
     }
 }
-
+```
 
 
 ---
@@ -423,7 +452,7 @@ stage('Test') {
 - Useful for transient failures like network issues or flaky tests.
 
 ## Example
-
+```groovy
 stage('Build') {
     steps {
         retry(3) {
@@ -431,7 +460,7 @@ stage('Build') {
         }
     }
 }
-
+```
 
 
 ---
@@ -443,7 +472,7 @@ stage('Build') {
 - `unstable("Some tests failed")` → marks stage/build as unstable without stopping the pipeline.
 - `error("Build failed due to XYZ")` → immediately fails stage/build.
 - `post` blocks → execute actions based on build status:
-
+```groovy
 post {
     success { echo "Build succeeded" }
     failure { echo "Build failed" }
@@ -454,7 +483,7 @@ post {
   - `skipStagesAfterUnstable()` → skips stages after an unstable stage.
   - `failFast true` → aborts all parallel stages if any stage fails.
 
-
+```
 
 ---
 
@@ -505,7 +534,7 @@ post {
 
 3. How it Works / Steps / Syntax:
    - Basic Declarative parallel (each inner stage runs concurrently):
-
+```groovy
        pipeline {
          agent any
          stages {
@@ -524,11 +553,11 @@ post {
            }
          }
        }
-
+```
    - Fail-fast patterns commonly used in real projects:
 
      a) Pipeline-wide fail-fast for all parallels (Declarative):
-
+```groovy
        pipeline {
          agent any
          options { parallelsAlwaysFailFast() }   // abort sibling branches when one fails
@@ -541,9 +570,9 @@ post {
            }
          }
        }
-
+```
      b) Hybrid (scripted-style map) to enable `failFast: true` inside a Declarative stage:
-
+```groovy
        pipeline {
          agent any
          stages {
@@ -561,9 +590,9 @@ post {
            }
          }
        }
-
+```
      c) Matrix with fail-fast (Declarative):
-
+```groovy
        pipeline {
          agent any
          stages {
@@ -583,7 +612,7 @@ post {
            }
          }
        }
-
+```
    - Key notes:
      - Use `parallelsAlwaysFailFast()` when you want a blanket fail-fast across all parallel branches.
      - Use the `script { parallel(..., failFast: true) }` map style when you need per-stage fail-fast in a Declarative pipeline.
@@ -634,7 +663,7 @@ post {
 
 ### 1) agent any
 - Runs on any available Jenkins worker node.
-
+```groovy
 Example (groovy):
 pipeline {
   agent any
@@ -644,13 +673,13 @@ pipeline {
     }
   }
 }
-
+```
 ---
 
 ### 2) agent none
 - No global agent; each stage must define its own agent.
 - Use when different stages need different environments.
-
+```groovy
 Example (groovy):
 pipeline {
   agent none
@@ -665,12 +694,12 @@ pipeline {
     }
   }
 }
-
+```
 # Jenkins Declarative Pipeline — Agent Directive (Part 2)
 
 ### 3) agent { label '...' }
 - Run only on nodes that have a matching label (labels are set on nodes in Jenkins).
-
+```groovy
 Example (groovy):
 pipeline {
   agent { label 'linux' }
@@ -680,13 +709,13 @@ pipeline {
     }
   }
 }
-
+```
 ---
 
 ### 4) agent { docker { image '...' } }
 - Run inside a temporary Docker container (tools come from the image).
 - Requires Docker installed on the Jenkins agent host.
-
+```groovy
 Example (groovy):
 pipeline {
   agent {
@@ -704,12 +733,12 @@ pipeline {
     }
   }
 }
-
+```
 ---
 
 ### 5) agent { dockerfile { ... } }
 - Build a custom image from a Dockerfile in your repo, then run inside it.
-
+```groovy
 Example (groovy):
 pipeline {
   agent {
@@ -722,9 +751,10 @@ pipeline {
   stages {
     stage('CI') {
       steps { sh 'make test' }
-[O    }
+    }
   }
 }
+```
 # Jenkins Declarative Pipeline — Agent Directive (Part 3)
 
 ## Special Cases (for awareness)
@@ -763,4 +793,7 @@ pipeline {
 - Install/verify Docker service on agents for docker agents.
 - Add/adjust stage-level agents when using agent none.
 - Optimize images (multi-stage builds, cache dependencies).
+
+---
+---
 ---

@@ -952,4 +952,146 @@ Document variables and locals clearly for team collaboration.
 
 ---
 ---
+
+# Map of Objects in Terraform
+
+## What is a Map of Objects?
+
+A **map of objects** is a Terraform variable type where:
+
+* You have **multiple keys** (like a map)
+* Each key contains **multiple attributes** (like an object)
+
+This is the most powerful and flexible structure in Terraform for creating multiple resources with different configurations.
+
 ---
+
+## Why Use Map of Objects?
+
+Use a map of objects when:
+
+* You want to create **multiple resources dynamically**
+* Each resource needs **multiple attributes** (not just one)
+* You need clean, scalable, production‑level Terraform code
+
+Examples:
+
+* Multiple EC2 instances with different AMIs, instance types, disks, tags
+* Multiple NACL rules with different ports, protocols, rule numbers
+* Multiple SG rules with dynamic configurations
+* Multiple subnets with different CIDRs and AZs
+
+---
+
+## Example: Map of Objects Structure
+
+### variables.tf
+
+```hcl
+variable "servers" {
+  type = map(object({
+    ami           = string
+    instance_type = string
+    volume_size   = number
+  }))
+}
+```
+
+### terraform.tfvars
+
+```hcl
+servers = {
+  web = {
+    ami           = "ami-111"
+    instance_type = "t2.micro"
+    volume_size   = 20
+  }
+
+  app = {
+    ami           = "ami-222"
+    instance_type = "t3.micro"
+    volume_size   = 30
+  }
+}
+```
+
+### main.tf
+
+```hcl
+resource "aws_instance" "servers" {
+  for_each      = var.servers
+
+  ami           = each.value.ami
+  instance_type = each.value.instance_type
+
+  root_block_device {
+    volume_size = each.value.volume_size
+  }
+
+  tags = {
+    Name = each.key
+  }
+}
+```
+
+---
+
+## How It Works Internally
+
+A map of objects behaves like:
+
+* **map** → you get a key for each resource (web, app)
+* **object** → each key contains many attributes
+
+So:
+
+* `each.key` → resource name (web, app)
+* `each.value.ami` → AMI value
+* `each.value.instance_type` → instance type
+* `each.value.volume_size` → disk size
+
+---
+
+## Why It’s Better Than Lists or Simple Maps
+
+| Feature                          | List | Map | Object | Map of Objects |
+| -------------------------------- | ---- | --- | ------ | -------------- |
+| Multiple resources               | ✔    | ✔   | ❌      | ✔              |
+| Multiple attributes per resource | ❌    | ❌   | ✔      | ✔              |
+| Best for dynamic infra           | ❌    | ❌   | ❌      | ✔              |
+
+Map of objects gives **maximum flexibility** and is used in real companies.
+
+---
+
+## When to Always Use Map of Objects
+
+* Multiple EC2s with different configs
+* Multiple NACL rules
+* Multiple SG rules
+* Multiple subnets
+* Multiple route table associations
+
+If you need different values for different resources → use **map of objects**.
+
+---
+
+## One-Line Memory Trick
+
+**List → many values**
+**Map → one value per key**
+**Object → many values in one item**
+**Map of Objects → many items, each with many values (the most powerful)**
+
+---
+
+Let me know if you want examples for:
+
+* NACL using map of objects
+* SG rules using map of objects
+* Subnets using map of objects
+
+---
+---
+---
+

@@ -1226,3 +1226,364 @@ Remove:
 ---
 ---
 
+# **EKS Kubernetes Version Upgrade – Complete Notes (Control Plane + Addons + Worker Nodes + Terraform + Console)**
+
+These are the **full and complete notes** for the ENTIRE Kubernetes version upgrade process in EKS — including:
+
+* Control Plane Upgrade
+* Addon Upgrades (CNI, kube-proxy, CoreDNS)
+* Worker Node Upgrades (In-place & Blue/Green)
+* Terraform-based upgrades
+* AWS Console & AWS CLI process
+* Zero-downtime strategies
+* Common issues + troubleshooting
+* Best practices
+
+This replaces all previous partial notes and gives you one final, complete version.
+
+---
+
+# **1. Concept / What**
+
+EKS Kubernetes Version Upgrade is the complete process of updating all cluster components to a newer supported Kubernetes version.
+
+AWS manages the **control plane INFRASTRUCTURE**, but AWS does **NOT automatically upgrade**:
+
+* Kubernetes control plane version
+* Worker nodes
+* Cluster addons
+
+These upgrades must be performed by DevOps engineers.
+
+An EKS cluster upgrade includes **three stages**:
+
+1. **Control Plane Upgrade** (AWS performs backend upgrade)
+2. **Addon Upgrade** (CNI, CoreDNS, kube-proxy)
+3. **Worker Node Upgrade** (In-place or Blue/Green)
+
+All three must be updated for the cluster to be fully upgraded and supported.
+
+---
+
+# **2. Why / Purpose / Real-World Need**
+
+Upgrading Kubernetes is required to:
+
+* Maintain AWS support (EKS supports only last **3 versions**)
+* Ensure compatibility with APIs and controllers
+* Apply security patches
+* Prevent deprecated API failures
+* Get new Kubernetes features
+* Maintain cluster reliability
+
+If you don’t upgrade:
+
+* Deprecated APIs break workloads
+* Addons fail due to version mismatch
+* Node AMIs become outdated & insecure
+* Control plane receives no more patches
+* AWS forces upgrades after deadlines
+
+---
+
+# **3. How It Works – Step-by-Step Upgrade Process**
+
+There are three main components to upgrade.
+
+---
+
+# **Stage 1: Control Plane Upgrade (AWS-managed)**
+
+Control plane upgrade updates:
+
+* kube-apiserver
+* API aggregation
+* admission controllers
+* etcd compatibility layers
+* internal cluster controllers
+
+AWS performs the upgrade with **ZERO downtime**.
+Your application pods continue running.
+
+### **Upgrade via AWS Console**
+
+```
+EKS → Clusters → <your cluster> → Upgrade Version
+```
+
+Choose new version and confirm.
+
+### **Upgrade via AWS CLI**
+
+```bash
+aws eks update-cluster-version \
+  --name mycluster \
+  --kubernetes-version 1.28
+```
+
+### **Upgrade via eksctl**
+
+```bash
+eksctl upgrade cluster --name=mycluster --region=ap-south-1
+```
+
+**Control plane upgrade does NOT complete the upgrade — you MUST update addons & node groups.**
+
+---
+
+# **Stage 2: Upgrade EKS Addons (Required After Control Plane Upgrade)**
+
+Control plane version MUST match compatible addon versions.
+
+Addons to upgrade **in this order**:
+
+1. **AWS VPC CNI (aws-node) — Pod IP allocation**
+2. **kube-proxy — Service networking rules**
+3. **CoreDNS — DNS resolution**
+
+### Upgrade via Console
+
+```
+EKS → Addons → Update
+```
+
+### Upgrade via AWS CLI
+
+```bash
+aws eks update-addon --cluster-name mycluster --addon-name vpc-cni
+aws eks update-addon --cluster-name mycluster --addon-name kube-proxy
+aws eks update-addon --cluster-name mycluster --addon-name coredns
+```
+
+If addons are outdated, workloads may fail after upgrade.
+
+---
+
+# **Stage 3: Upgrade Worker Nodes**
+
+Worker nodes must match or be compatible with the new control plane & addons.
+
+There are two upgrade strategies:
+
+---
+
+# ✅ **A. In-Place Managed Node Group Upgrade (Rolling Replace)**
+
+AWS will:
+
+1. Create new nodes with new AMI + version
+2. Drain old nodes (evict pods)
+3. Delete old nodes
+4. Repeat for each node
+
+This is the **simplest** method.
+
+### Upgrade via Console
+
+```
+EKS → Node groups → <node group> → Upgrade
+```
+
+### Upgrade via CLI
+
+```bash
+aws eks update-nodegroup-version \
+  --cluster-name mycluster \
+  --nodegroup-name ng1 \
+  --launch-template version=2
+```
+
+Pods move safely to new nodes if **replicas ≥ 2**.
+
+---
+
+# ✅ **B. Blue-Green Node Group Upgrade (Recommended for Production)**
+
+1. Create **new node group (Green)** with updated version/AMI
+2. Wait until nodes are **Ready**
+3. **Cordon** old nodes:
+
+```bash
+kubectl cordon <old-node>
+```
+
+4. **Drain** old nodes:
+
+```bash
+kubectl drain <old-node> --ignore-daemonsets --delete-emptydir-data
+```
+
+5. Pods move automatically to Green nodes
+6. Delete old node group from EKS
+
+### Why this method?
+
+* Full control
+* No risk of AWS in-place upgrade issues
+* You can rollback easily by keeping old nodes
+
+---
+
+# **4. How Pods Move During Node Upgrade (Important)**
+
+During draining:
+
+* Kubernetes **evicts only one pod at a time**
+* Scheduler immediately creates a replacement pod on new nodes
+* Other replicas keep running
+* ZERO downtime as long as replicas ≥ 2
+
+If replicas = 1 → small downtime
+
+---
+
+# **5. Terraform – Full Upgrade Flow**
+
+Terraform manages upgrades via:
+
+* Updating the **EKS cluster resource**
+* Updating the **node group resource**
+* Updating the **launch template** AMI version
+
+---
+
+## **A. Control Plane Upgrade via Terraform**
+
+```hcl
+resource "aws_eks_cluster" "eks" {
+  name     = "mycluster"
+  version  = "1.28"   # Changing this upgrades control plane
+
+  role_arn = aws_iam_role.eks_role.arn
+
+  vpc_config {
+    subnet_ids = local.subnets
+  }
+}
+```
+
+Running:
+
+```
+terraform apply
+```
+
+Triggers the control plane upgrade.
+
+---
+
+## **B. Node Group Upgrade via Terraform (Launch Template Method)**
+
+```hcl
+resource "aws_launch_template" "lt" {
+  name_prefix = "eks-ng-lt"
+  image_id    = data.aws_ami.eks_worker_ami.id  # Updated AMI
+  instance_type = "t3.medium"
+}
+
+resource "aws_eks_node_group" "ng" {
+  cluster_name    = aws_eks_cluster.eks.name
+  node_group_name = "ng-managed"
+  node_role_arn   = aws_iam_role.node_role.arn
+  subnet_ids      = local.subnets
+
+  scaling_config {
+    desired_size = 3
+    min_size     = 2
+    max_size     = 5
+  }
+
+  launch_template {
+    id      = aws_launch_template.lt.id
+    version = "$Latest"
+  }
+}
+```
+
+Updating AMI or LT version → triggers a rolling replace.
+
+---
+
+## **C. Blue-Green via Terraform**
+
+1. Create a new node group:
+
+```hcl
+resource "aws_eks_node_group" "ng_green" { ... }
+```
+
+2. Apply Terraform (Green nodes created)
+3. Cordon & drain old nodes manually
+4. Delete old node group from Terraform
+5. Apply again
+
+This is the safest production method.
+
+---
+
+# **6. Common Issues / Errors**
+
+* CoreDNS failing → incompatible version
+* Pods stuck Pending → insufficient capacity or taints
+* CNI failing → outdated aws-node addon
+* Deprecated API usage → workloads fail after upgrade
+* Subnet IP exhaustion → nodes cannot schedule pods
+* Node IAM role missing required policies
+
+---
+
+# **7. Troubleshooting / Fixes**
+
+* After control plane upgrade → upgrade addons immediately
+* Validate deprecated APIs using:
+
+```bash
+kubectl api-resources
+kubectl api-versions
+```
+
+* Ensure node role has:
+
+  * AmazonEKSWorkerNodePolicy
+  * AmazonEC2ContainerRegistryReadOnly
+  * AmazonEKS_CNI_Policy
+* Ensure subnets have enough IPs
+* Check aws-node logs if pods fail networking
+
+---
+
+# **8. Best Practices / Tips**
+
+### ✔ Order of upgrade
+
+1. **Control Plane**
+2. **Addons** (CNI → CoreDNS → kube-proxy)
+3. **Node Groups**
+
+### ✔ Use Managed Node Groups
+
+Avoid self-managed nodes.
+
+### ✔ Always prefer Blue-Green in production
+
+Safe, rollback-friendly.
+
+### ✔ Use PDBs and replicas ≥ 2
+
+Guarantees zero downtime.
+
+### ✔ Use Launch Template for node AMI control
+
+Predictable and safe upgrades.
+
+### ✔ Test in Dev → Staging → Prod
+
+Never upgrade Prod directly.
+
+### ✔ Monitor IP and ENI usage
+
+Prevent CNI issues.
+
+---
+---
+---

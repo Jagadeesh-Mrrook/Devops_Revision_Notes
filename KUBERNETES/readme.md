@@ -193,6 +193,8 @@ This checklist is purely conceptual; YAML manifests will be included later durin
 * [ ] Multi-cluster management (EKS Anywhere)
 * [ ] Cost optimization & capacity planning
 * [ ] Observability and alerting best practices
+* [ ] Logs Monitoring (Fluentbit+cloudwatch)
+* [ ] Tracing (OpenTelemetry, aws X-ray)
 * [ ] Real-world production scenarios and RCA handling
 * [ ] Deployment lifecycle management at scale
 

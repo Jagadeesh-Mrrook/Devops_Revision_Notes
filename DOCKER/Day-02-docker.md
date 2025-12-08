@@ -102,10 +102,32 @@ RUN chmod +x app.py
 # Docker Images: Tagging Convention & Versioning (Detailed Explanation)
 
 ## **Concept / What**
+---
+# Docker Image Tag — Definition (Standalone Note)
 
-Tagging in Docker means assigning a name and version identifier to an image. A tag allows the same image to have multiple references. For ECR and other registries, the tag must include the registry URL prefix so Docker knows where to push/pull the image.
+## **Concept / What**
+
+A Docker image tag is a **human‑readable label** that points to a specific, immutable version of a Docker image (internally identified by its digest). It allows you to reference, version, and promote images easily across different environments.
 
 ---
+
+## **Quick Examples**
+
+```
+myapp:1.0
+myapp:latest
+myapp:build-21
+123456789012.dkr.ecr.ap-south-1.amazonaws.com/myapp:prod
+```
+
+---
+
+## **Best Practice**
+
+Use clear, immutable tags like semantic versions, commit hashes, or build numbers instead of `latest`.
+
+---
+
 
 ## **Why / Purpose / Real-World Use Cases**
 
@@ -711,6 +733,81 @@ docker login
 * Use lifecycle policies to clean old images.
 * Avoid using `latest` in production.
 * Structure repositories per microservice for clarity.
+
+---
+---
+
+# Docker Build Context (Detailed Explanation)
+
+## **Concept / What**
+
+The **build context** is the **entire directory** sent to the Docker daemon when you run:
+
+```
+docker build .
+```
+
+The `.` means:
+
+> Send **all files and folders** from the current directory to the Docker daemon.
+
+Dockerfile instructions like `COPY` and `ADD` can only access files **inside this build context**.
+
+---
+
+## **Why It Matters**
+
+The size and content of the build context directly affect:
+
+* Build speed
+* CI/CD performance
+* Image size
+* Security
+* Layer caching efficiency
+
+---
+
+## **Problems If Build Context Is Too Large**
+
+* **Slow builds** because Docker uploads the entire context to the daemon.
+* **Unnecessary files** (node_modules, git history, logs) slow down image creation.
+* **Accidental inclusion of sensitive files** (keys, credentials).
+* **Inefficient caching** because large contexts cause more frequent cache invalidation.
+* **Large images** if unwanted files get copied inside.
+
+---
+
+## **How to Prevent Issues**
+
+Use a `.dockerignore` file to exclude unnecessary files from the build context.
+
+### Example `.dockerignore`:
+
+```
+node_modules
+.git
+.gitignore
+logs/
+*.pem
+*.env
+.vscode
+.DS_Store
+```
+
+### Best Practices
+
+* Keep the build context **minimal and clean**.
+* Place your Dockerfile at the root of the application folder.
+* Exclude large or irrelevant directories.
+* Never include secrets or credentials inside the build context.
+
+---
+
+## **Quick Summary**
+
+* Build context = directory sent to daemon.
+* Large context = slow builds + security risk.
+* Solution = `.dockerignore`.
 
 ---
 ---

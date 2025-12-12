@@ -34,15 +34,25 @@
 
 5. **Templating Engine**
 
-* [ ] Template syntax
-* [ ] .Values
-* [ ] .Release
-* [ ] .Chart
-* [ ] Conditionals (if/else)
-* [ ] Loops (range)
-* [ ] Pipeline operators
-* [ ] Helper templates (helpers.tpl)
-* [ ] Template patterns for Deployment, Service, Ingress, ConfigMaps, Secrets
+   * [ ] Template syntax
+   * [ ] Dot context (`.`)
+   * [ ] .Values
+   * [ ] .Release
+   * [ ] .Chart
+   * [ ] Conditionals (if/else)
+   * [ ] Loops (range)
+   * [ ] With blocks
+   * [ ] Context switching inside range/with
+   * [ ] Passing context to include
+   * [ ] Built-in template functions (upper, lower, default, quote, toYaml, dict, add…)
+   * [ ] Pipeline operators
+   * [ ] indent / nindent
+   * [ ] tpl function
+   * [ ] Helper templates (helpers.tpl — define/include)
+   * [ ] Template patterns for Deployment, Service, Ingress, ConfigMaps, Secrets
+   * [ ] NOTES.txt (post-install message templating)
+   * [ ] Accessing files using .Files (Get, GetBytes, Glob)
+   * [ ] Template debugging (helm template, --debug, --dry-run)
 
 6. **Rendering & Validating Templates**
 

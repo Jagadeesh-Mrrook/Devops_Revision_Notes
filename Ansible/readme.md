@@ -88,6 +88,18 @@
 * [ ] Reusable roles
 * [ ] Organizing large playbooks using roles
 
+## 9.5 Inventory Management (Advanced – Dynamic Inventory)
+
+* [ ] What is Dynamic Inventory
+* [ ] Static Inventory vs Dynamic Inventory (when to use which)
+* [ ] Inventory plugins vs custom inventory scripts
+* [ ] AWS EC2 Dynamic Inventory plugin (overview)
+* [ ] Using EC2 tags for host grouping (env, role, app)
+* [ ] Filtering hosts using plugin configuration
+* [ ] Inventory caching and performance considerations
+* [ ] Combining static and dynamic inventory in real projects
+* [ ] Common issues and debugging dynamic inventory
+
 ## 10. Tags
 
 * [ ] Running specific tasks

@@ -210,7 +210,12 @@ docker run -d --restart=on-failure:5 app
 
 ### **3. Always Restart**
 
-Restarts the container no matter how it stopped (even after manual stop).
+* Automatically restarts the container if the application crashes or the main process exits unexpectedly
+* Automatically restarts the container when the Docker daemon restarts
+* Automatically restarts the container when the host / EC2 reboots
+* Does **not** restart the container if it is manually stopped using `docker stop`
+* Manual commands like `docker start` or `docker restart` still work normally
+* Restart policies apply only to **automatic recovery**, not to manual operator actions
 
 ```bash
 docker run -d --restart=always app

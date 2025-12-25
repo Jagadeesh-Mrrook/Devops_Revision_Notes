@@ -1456,4 +1456,106 @@ docker network inspect app-net
 ---
 ---
 
+# Docker Networking Basics
+
+## 1. docker0 (Default Bridge Network)
+
+* `docker0` is a **Linux bridge network interface** created automatically by Docker.
+* It implements the **default Docker bridge network**.
+* It has:
+
+  * A **CIDR/subnet** (commonly `172.17.0.0/16`)
+  * A **gateway IP** (usually `172.17.0.1`)
+* Containers that do not specify a network are attached to `docker0`.
+
+**Key point:**
+
+* There is **only one docker0** on a host.
+
+---
+
+## 2. Custom (User-Defined) Bridge Networks
+
+* When we create a custom Docker network, Docker **does NOT reuse docker0**.
+* Docker creates a **separate Linux bridge interface** with a name like:
+
+  * `br-xxxx`
+* Each custom bridge has:
+
+  * Its **own subnet**
+  * Its **own gateway IP**
+* Containers attached to different bridge networks are **isolated by default**.
+
+**Key point:**
+
+* docker0 is only for the default network.
+* Custom networks use **their own bridge interfaces**.
+
+---
+
+## 3. IP Assignment (Who assigns IPs?)
+
+* Docker has an internal **IPAM (IP Address Management)** system.
+* Docker assigns container IPs **from the subnet of the bridge**.
+* The bridge interface (docker0 or br-xxxx):
+
+  * Acts as the **gateway**
+  * Represents the network
+
+---
+
+## 4. veth (Virtual Ethernet)
+
+* `veth` stands for **virtual ethernet**.
+* veth interfaces always come in **pairs**.
+* A veth pair is used to connect a container to a bridge network.
+
+---
+
+## 5. eth0 (Inside the Container)
+
+* `eth0` is the **network interface inside the container**.
+* It is **one end of the veth pair**.
+* It receives an IP address from the bridge subnet.
+* From the container’s point of view, `eth0` looks like a normal network card.
+
+---
+
+## 6. veth Interface (Host Side)
+
+* The other end of the veth pair exists on the **host**.
+* It appears as an interface named like `vethXXXX`.
+* This host-side veth is attached to:
+
+  * `docker0` (default network), or
+  * `br-xxxx` (custom network)
+
+---
+
+## 7. How Everything Connects Together
+
+```
+Container namespace        Host namespace
+------------------        ----------------
+eth0   <===========>   vethXXXX  --->  docker0 / br-xxxx
+```
+
+* `eth0` (container) + `vethXXXX` (host) = **veth pair**
+* Bridge (`docker0` or `br-xxxx`) routes traffic between containers and outside networks.
+
+---
+
+## 8. Interview-Ready Summary
+
+* `docker0` is a Linux bridge network interface for the default Docker network.
+* Custom Docker networks create separate bridge interfaces (`br-xxxx`).
+* Docker assigns container IPs from the bridge subnet using IPAM.
+* Containers connect to bridges using a veth pair:
+
+  * `eth0` inside the container
+  * `vethXXXX` on the host
+
+---
+---
+---
 
